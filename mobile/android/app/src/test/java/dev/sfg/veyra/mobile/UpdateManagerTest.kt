@@ -198,4 +198,58 @@ class UpdateManagerTest {
 
         org.junit.Assert.assertNull(metadata)
     }
+
+    @Test
+    fun parsesGitHubReleasesHonorsAllowPrereleaseFalse() {
+        val releasesJson = """
+            [
+              {
+                "tag_name": "v1.1.0-beta.1",
+                "name": "Veyra Mobile 1.1.0 (beta)",
+                "prerelease": true,
+                "body": "Beta notes",
+                "published_at": "2026-09-01T00:00:00Z",
+                "assets": [
+                  {
+                    "name": "app-release.apk",
+                    "browser_download_url": "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.1.0-beta.1/app-release.apk"
+                  }
+                ]
+              },
+              {
+                "tag_name": "v1.0.0",
+                "name": "Veyra Mobile 1.0.0",
+                "prerelease": false,
+                "body": "Stable notes",
+                "published_at": "2026-08-01T00:00:00Z",
+                "assets": [
+                  {
+                    "name": "app-release.apk",
+                    "browser_download_url": "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk"
+                  }
+                ]
+              }
+            ]
+        """.trimIndent()
+
+        val stableMetadata = UpdateManager.parseGitHubReleasesMetadata(
+            releasesJson = releasesJson,
+            allowPrerelease = false,
+            fetchManifest = { null },
+        )
+
+        org.junit.Assert.assertNotNull(stableMetadata)
+        assertEquals("1.0.0", stableMetadata?.version)
+        assertEquals("Stable notes", stableMetadata?.releaseNotes)
+
+        val betaMetadata = UpdateManager.parseGitHubReleasesMetadata(
+            releasesJson = releasesJson,
+            allowPrerelease = true,
+            fetchManifest = { null },
+        )
+
+        org.junit.Assert.assertNotNull(betaMetadata)
+        assertEquals("1.1.0-beta.1", betaMetadata?.version)
+    }
 }
+

@@ -47,9 +47,8 @@ class UpdateManager(
     private val isBetaEnabled: () -> Boolean = { false },
 ) {
 
-    private val baseUrl = "https://downloads.sfg545.dev/orchard"
-    private val jsonUrl = "$baseUrl/latest-android.json"
     private val githubReleasesUrl = "https://api.github.com/repos/SCARLXRD-1/VEYRA-MUSIC/releases"
+    private val officialManifestUrl = "https://raw.githubusercontent.com/SCARLXRD-1/VEYRA-MUSIC/main/website/latest-android.json"
 
     private val mutableState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = mutableState.asStateFlow()
@@ -82,8 +81,43 @@ class UpdateManager(
     }
 
     private fun fetchStableUpdateMetadata(): MobileUpdateMetadata? = runCatching {
-        val connection = URL(jsonUrl).openConnection() as HttpURLConnection
+        val connection = URL(githubReleasesUrl).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
+        connection.setRequestProperty("Accept", "application/vnd.github+json")
+        connection.setRequestProperty("User-Agent", "VeyraMusic-Android/1.0.0 (AKASHI DEV)")
+        connection.connectTimeout = 5000
+        connection.readTimeout = 5000
+
+        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            val meta = parseGitHubReleasesMetadata(response, allowPrerelease = false)
+            if (meta != null) return@runCatching meta
+        }
+
+        fetchManifestFromUrl(officialManifestUrl)
+    }.getOrNull()
+
+    private fun fetchBetaUpdateMetadata(): MobileUpdateMetadata? = runCatching {
+        val connection = URL(githubReleasesUrl).openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Accept", "application/vnd.github+json")
+        connection.setRequestProperty("User-Agent", "VeyraMusic-Android/1.0.0 (AKASHI DEV)")
+        connection.connectTimeout = 5000
+        connection.readTimeout = 5000
+
+        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            val meta = parseGitHubReleasesMetadata(response, allowPrerelease = true)
+            if (meta != null) return@runCatching meta
+        }
+
+        fetchStableUpdateMetadata()
+    }.getOrNull()
+
+    private fun fetchManifestFromUrl(url: String): MobileUpdateMetadata? = runCatching {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("User-Agent", "VeyraMusic-Android/1.0.0 (AKASHI DEV)")
         connection.connectTimeout = 5000
         connection.readTimeout = 5000
 
@@ -93,24 +127,6 @@ class UpdateManager(
         } else {
             null
         }
-    }.getOrNull()
-
-    private fun fetchBetaUpdateMetadata(): MobileUpdateMetadata? = runCatching {
-        val connection = URL(githubReleasesUrl).openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "application/vnd.github+json")
-        connection.setRequestProperty("User-Agent", "Orchard-Android")
-        connection.connectTimeout = 5000
-        connection.readTimeout = 5000
-
-        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-            val response = connection.inputStream.bufferedReader().use { it.readText() }
-            val meta = parseGitHubReleasesMetadata(response)
-            if (meta != null) return@runCatching meta
-        }
-
-        // If GitHub releases did not return beta metadata, check if there's a newer stable release.
-        fetchStableUpdateMetadata()
     }.getOrNull()
 
     fun dismiss() {
@@ -135,6 +151,7 @@ class UpdateManager(
 
         fun parseGitHubReleasesMetadata(
             releasesJson: String,
+            allowPrerelease: Boolean = true,
             fetchManifest: (String) -> String? = { url ->
                 runCatching {
                     val conn = URL(url).openConnection() as HttpURLConnection
@@ -152,6 +169,11 @@ class UpdateManager(
                 val releaseObj = array.getJSONObject(i)
                 val tagName = releaseObj.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
                 if (tagName.isEmpty()) continue
+
+                val isPrerelease = releaseObj.optBoolean("prerelease", false) ||
+                    tagName.contains("beta", ignoreCase = true) ||
+                    tagName.contains("rc", ignoreCase = true)
+                if (!allowPrerelease && isPrerelease) continue
 
                 val assets = releaseObj.optJSONArray("assets") ?: JSONArray()
                 var manifestUrl: String? = null
@@ -255,11 +277,8 @@ class UpdateManager(
 
     fun downloadAndInstallUpdate(metadata: MobileUpdateMetadata) {
         val version = metadata.version
-        // The published asset is not always named the way we would guess (it is "Orchard-x.y.z.apk",
-        // not "orchard-x.y.z.apk"), so honour the URL the manifest gives us. Guessing produced a 404
-        // whose HTML body got saved as the .apk, which is why installs failed to parse.
-        val apkUrl = metadata.apkUrl.ifBlank { "$baseUrl/Orchard-$version.apk" }
-        val fileName = "Orchard-$version.apk"
+        val apkUrl = metadata.apkUrl.ifBlank { "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v$version/app-release.apk" }
+        val fileName = "VeyraMusic-$version.apk"
         val destination = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
 
         if (destination.exists()) destination.delete()
