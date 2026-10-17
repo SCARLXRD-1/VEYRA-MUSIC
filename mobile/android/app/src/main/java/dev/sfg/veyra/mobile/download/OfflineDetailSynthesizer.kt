@@ -1,0 +1,250 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.download
+
+import android.content.Context
+import dev.sfg.veyra.connect.R
+import dev.sfg.veyra.mobile.model.BrowseDetail
+import dev.sfg.veyra.mobile.model.CatalogItem
+import dev.sfg.veyra.mobile.model.CatalogKind
+import dev.sfg.veyra.mobile.model.LibrarySnapshot
+
+/**
+ * Builds offline [BrowseDetail] models from downloaded tracks and local library metadata when
+ * remote network endpoints (such as music.youtube.com) are unreachable.
+ */
+object OfflineDetailSynthesizer {
+
+    /**
+     * Synthesizes a [BrowseDetail] for the given [id] and optional [seed] using downloaded tracks.
+     *
+     * For artists, this includes ONLY the tracks that are downloaded.
+     *
+     * [context] localizes the synthesized titles and subtitles; when null (unit tests), the
+     * English literals are kept.
+     */
+    fun synthesize(
+        id: String,
+        seed: CatalogItem?,
+        downloadedItems: List<DownloadItem>,
+        library: LibrarySnapshot,
+        context: Context? = null,
+    ): BrowseDetail? {
+        val completedTracks =
+            downloadedItems
+                .filter { it.status == DownloadStatus.COMPLETED && it.filePath.isNotBlank() }
+                .map { it.track }
+
+        if (completedTracks.isEmpty()) return null
+
+        // 1. Is it a known playlist? Library grid cards frequently carry no tracks, so prefer the
+        // most complete membership available between the saved row and the navigation seed. An
+        // empty membership is unknown, never permission to expose every cached song.
+        val normalizedId = id.removePrefix("VL")
+        val savedPlaylist = library.savedPlaylists.firstOrNull { it.id.removePrefix("VL") == normalizedId }
+        val seedPlaylist = (seed as? CatalogItem.Collection)?.playlist
+            ?.takeIf { it.id.removePrefix("VL") == normalizedId }
+        val playlist = listOfNotNull(savedPlaylist, seedPlaylist).maxByOrNull { it.tracks.size }
+        if (playlist != null && playlist.tracks.isNotEmpty()) {
+            val completedById = completedTracks.associateBy { it.id }
+            // Walk playlist membership, not the download index: this preserves playlist order and
+            // intentional repeated rows while still projecting only files available offline.
+            val matchedTracks = playlist.tracks.mapNotNull { completedById[it.id] }
+            return BrowseDetail(
+                id = playlist.id,
+                title = playlist.title,
+                subtitle = downloadedSongsSubtitle(context, matchedTracks.size),
+                artworkUrl =
+                    playlist.artworkUrl.ifBlank {
+                        matchedTracks.firstOrNull()?.artworkUrl.orEmpty()
+                    },
+                kind = CatalogKind.PLAYLIST,
+                tracks = matchedTracks,
+                description = playlist.description,
+            )
+        }
+
+        // 2. Liked songs have real membership too; only the dedicated Downloads screens aggregate
+        // every file on the device.
+        if (id == "FEmusic_liked_videos") {
+            val completedById = completedTracks.associateBy { it.id }
+            val likedTracks = library.likedTracks.mapNotNull { completedById[it.id] }
+            return BrowseDetail(
+                id = id,
+                title = context?.getString(R.string.home_source_liked_songs) ?: "Liked Songs",
+                subtitle = downloadedSongsSubtitle(context, likedTracks.size),
+                artworkUrl = likedTracks.firstOrNull { it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty(),
+                kind = CatalogKind.PLAYLIST,
+                tracks = likedTracks,
+            )
+        }
+
+        if (id == "offline_downloads" || id == "downloads" || id == "local_downloads") {
+            return BrowseDetail(
+                id = id,
+                title = context?.getString(R.string.home_downloaded_music) ?: "Downloaded Music",
+                subtitle = downloadedSongsSubtitle(context, completedTracks.size),
+                artworkUrl =
+                    completedTracks
+                        .firstOrNull { it.artworkUrl.isNotBlank() }
+                        ?.artworkUrl
+                        .orEmpty(),
+                kind = CatalogKind.PLAYLIST,
+                tracks = completedTracks,
+            )
+        }
+
+        // 3. Artist: Matches artist ID, artist name, or Performer seed
+        val candidateArtistName =
+            when (seed) {
+                is CatalogItem.Performer -> seed.artist.name
+                else -> library.savedArtists.firstOrNull { it.id == id }?.name
+            }
+
+        val artistTracks = completedTracks.filter { track ->
+            (track.artistId.isNotBlank() && track.artistId == id) ||
+                (candidateArtistName != null &&
+                    track.artist.equals(candidateArtistName, ignoreCase = true)) ||
+                (track.artist.equals(id, ignoreCase = true))
+        }
+
+        if (
+            artistTracks.isNotEmpty() ||
+                (seed is CatalogItem.Performer && completedTracks.isNotEmpty())
+        ) {
+            val tracksToShow =
+                if (artistTracks.isNotEmpty()) artistTracks
+                else {
+                    val name = seed?.title.orEmpty()
+                    completedTracks
+                        .filter { it.artist.contains(name, ignoreCase = true) }
+                        .ifEmpty { completedTracks }
+                }
+            val finalArtistName =
+                candidateArtistName ?: tracksToShow.firstOrNull()?.artist ?: seed?.title
+                    ?: (context?.getString(R.string.msg_artist_fallback) ?: "Artist")
+            val artistArt =
+                seed?.artworkUrl?.ifBlank { null }
+                    ?: library.savedArtists
+                        .firstOrNull { it.name.equals(finalArtistName, ignoreCase = true) }
+                        ?.artworkUrl
+                    ?: tracksToShow.firstOrNull { it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty()
+
+            return BrowseDetail(
+                id = id,
+                title = finalArtistName,
+                subtitle = downloadedSongsSubtitle(context, tracksToShow.size),
+                artworkUrl = artistArt,
+                kind = CatalogKind.ARTIST,
+                tracks = tracksToShow, // ONLY the songs that are downloaded!
+                artist = finalArtistName,
+            )
+        }
+
+        // 4. Album: Matches album ID, album name, or Record seed
+        val savedAlbum = library.savedAlbums.firstOrNull { it.id == id }
+        val candidateAlbumTitle =
+            savedAlbum?.title ?: (seed as? CatalogItem.Record)?.album?.title ?: seed?.title
+
+        val albumTracks = completedTracks.filter { track ->
+            (track.albumId.isNotBlank() && track.albumId == id) ||
+                (candidateAlbumTitle != null &&
+                    track.album.equals(candidateAlbumTitle, ignoreCase = true))
+        }
+
+        if (albumTracks.isNotEmpty()) {
+            val finalAlbumTitle = candidateAlbumTitle ?: albumTracks.first().album
+            val artistName = savedAlbum?.artist ?: albumTracks.first().artist
+            val art =
+                savedAlbum?.artworkUrl?.ifBlank { null }
+                    ?: seed?.artworkUrl?.ifBlank { null }
+                    ?: albumTracks.firstOrNull { it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty()
+
+            return BrowseDetail(
+                id = id,
+                title = finalAlbumTitle,
+                subtitle = artistName,
+                artist = artistName,
+                artworkUrl = art,
+                kind = CatalogKind.ALBUM,
+                tracks = albumTracks, // ONLY the songs that are downloaded
+                year = savedAlbum?.year ?: "",
+            )
+        }
+
+        // 5. Seed fallback for artists/albums. A playlist without known membership cannot be
+        // reconstructed safely; returning all downloads is the cross-playlist leak this path must
+        // prevent.
+        if (seed != null) {
+            if (seed is CatalogItem.Collection) return null
+            val matchingSeedTracks =
+                completedTracks
+                    .filter { track ->
+                        track.artist.contains(seed.title, ignoreCase = true) ||
+                            track.album.contains(seed.title, ignoreCase = true) ||
+                            track.title.contains(seed.title, ignoreCase = true)
+                    }
+
+            if (matchingSeedTracks.isEmpty()) return null
+
+            val (kind, subtitle, artistName) =
+                when (seed) {
+                    is CatalogItem.Performer ->
+                        Triple(CatalogKind.ARTIST, seed.artist.subtitle, seed.artist.name)
+                    is CatalogItem.Record ->
+                        Triple(CatalogKind.ALBUM, seed.album.artist, seed.album.artist)
+                    is CatalogItem.Collection ->
+                        Triple(CatalogKind.PLAYLIST, seed.playlist.author, seed.playlist.author)
+                    is CatalogItem.Song ->
+                        Triple(CatalogKind.PLAYLIST, seed.track.artist, seed.track.artist)
+                    is CatalogItem.Category ->
+                        Triple(CatalogKind.PLAYLIST, "", "")
+                }
+
+            return BrowseDetail(
+                id = id,
+                title = seed.title,
+                subtitle = subtitle.ifBlank { downloadedSongsSubtitle(context, matchingSeedTracks.size) },
+                artworkUrl =
+                    seed.artworkUrl.ifBlank {
+                        matchingSeedTracks
+                            .firstOrNull { it.artworkUrl.isNotBlank() }
+                            ?.artworkUrl
+                            .orEmpty()
+                    },
+                kind = kind,
+                tracks = matchingSeedTracks,
+                artist = artistName,
+            )
+        }
+
+        // An unknown collection has no trustworthy local membership. The explicit Downloads ids
+        // above are the only screens that intentionally aggregate the full cache.
+        return null
+    }
+
+    private fun downloadedSongsSubtitle(context: Context?, count: Int): String =
+        context?.resources?.getQuantityString(R.plurals.msg_downloaded_songs_count, count, count)
+            ?: "$count downloaded ${if (count == 1) "song" else "songs"}"
+}

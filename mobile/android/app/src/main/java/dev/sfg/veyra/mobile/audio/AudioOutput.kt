@@ -1,0 +1,97 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.audio
+
+import android.content.Context
+import dev.sfg.veyra.connect.R
+
+/** Physical class of the route audio is currently leaving the phone through. */
+enum class AudioOutputType {
+    PHONE_SPEAKER,
+    EARPIECE,
+    WIRED_HEADPHONES,
+    BLUETOOTH_HEADPHONES,
+    BLUETOOTH_EARBUDS,
+    BLUETOOTH_SPEAKER,
+    CAR,
+    USB,
+    HDMI,
+    HEARING_AID,
+    UNKNOWN,
+    ;
+
+    /** Routes whose real name is only readable with `BLUETOOTH_CONNECT`. */
+    val isBluetooth: Boolean
+        get() = this == BLUETOOTH_HEADPHONES ||
+            this == BLUETOOTH_EARBUDS ||
+            this == BLUETOOTH_SPEAKER ||
+            this == CAR
+}
+
+/**
+ * The active output route.
+ *
+ * [name] is the device's own name when we can read it (a bonded Bluetooth device with
+ * `BLUETOOTH_CONNECT` granted), otherwise a generic label for the route type.
+ */
+data class AudioOutput(
+    val type: AudioOutputType = AudioOutputType.PHONE_SPEAKER,
+    val name: String = "This Device",
+) {
+    /** True when audio is playing out of the phone itself rather than an attached device. */
+    val isPhoneItself: Boolean
+        get() = type == AudioOutputType.PHONE_SPEAKER || type == AudioOutputType.EARPIECE
+}
+
+/**
+ * Whether this is a tablet, by the same 600dp shortest-width rule the resource
+ * system uses for `sw600dp`. Orientation cannot change the answer, so a phone
+ * held sideways is still a phone.
+ */
+fun Context.isTabletForm(): Boolean = resources.configuration.smallestScreenWidthDp >= 600
+
+/** Returns whether the underlying physical hardware is a book-style foldable device. */
+fun Context.isFoldableHardware(): Boolean {
+    val isFlip = android.os.Build.MODEL.contains("Flip", ignoreCase = true) ||
+        android.os.Build.DEVICE.contains("flip", ignoreCase = true)
+    if (isFlip) return false
+
+    return packageManager.hasSystemFeature("android.hardware.sensor.hinge_angle") ||
+        android.os.Build.MODEL.contains("Fold", ignoreCase = true) ||
+        android.os.Build.DEVICE.contains("fold", ignoreCase = true)
+}
+
+/** What this device should call itself in output pickers: "This Tablet", "This Foldable", or "This Phone". */
+fun Context.selfDeviceLabel(): String = when {
+    isTabletForm() && isFoldableHardware() -> getString(R.string.audioout_this_foldable)
+    isTabletForm() -> getString(R.string.audioout_this_tablet)
+    else -> getString(R.string.audioout_this_phone)
+}
+
+/** The same distinction in lowercase, for use inside a sentence. */
+fun Context.selfDeviceWord(): String = when {
+    isTabletForm() && isFoldableHardware() -> getString(R.string.audioout_word_foldable)
+    isTabletForm() -> getString(R.string.audioout_word_tablet)
+    else -> getString(R.string.audioout_word_phone)
+}

@@ -1,0 +1,414 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* Sidebar Root Styles */
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.sidebar .q-drawer__content {
+  background: var(--panel);
+}
+
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 56px 12px 12px;
+}
+
+/* Search Form & Input */
+.sidebar-search-form {
+  padding: 0;
+}
+
+.sidebar-search-input {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+  background: #090E18;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.75), inset -1px -1px 2px rgba(255, 255, 255, 0.025);
+  transition: all 180ms ease;
+}
+
+.sidebar-search-input:focus-within {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: #070B13;
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.85), inset -1px -1px 2px rgba(255, 255, 255, 0.03), 0 0 10px rgba(56, 189, 248, 0.12);
+}
+
+.sidebar-search-input .q-field__control,
+.sidebar-search-input .q-field__prepend,
+.sidebar-search-input .q-field__append {
+  height: 32px;
+  min-height: 32px;
+}
+
+.sidebar-search-input .q-field__prepend {
+  padding-right: 6px;
+}
+
+.sidebar-search-input .q-field__native,
+.sidebar-search-input .q-field__input {
+  color: #cbd5ce;
+  font-size: 11px;
+}
+
+.sidebar-search-input .q-icon {
+  color: #5d6760;
+  font-size: 16px;
+}
+
+/* Groups and Headings */
+.sidebar-group--nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-label,
+.sidebar-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  padding: 4px 8px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.sidebar-section-heading span:last-child {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* Navigation Links */
+.nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 8px);
+  background: transparent;
+  color: var(--muted-strong, #CBD5E1);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-link::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 3px;
+  background: transparent;
+  content: '';
+  border-radius: 0 2px 2px 0;
+  transform: scaleY(0.4);
+  opacity: 0;
+  transition: all 180ms ease;
+}
+
+.nav-link .q-icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--muted, #94A3B8);
+  font-size: 17px;
+  transition: color 160ms ease;
+}
+
+.nav-link:hover {
+  background: linear-gradient(145deg, #182236, #121A2A);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    -2px -2px 6px rgba(255, 255, 255, 0.04),
+    4px 4px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.nav-link:hover .q-icon {
+  color: #FFFFFF;
+}
+
+.nav-link:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+  background: rgba(56, 189, 248, 0.4);
+}
+
+.nav-link:focus-visible,
+.library-link:focus-visible,
+.account-profile:focus-visible,
+.sidebar-mini__button:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.5);
+  outline-offset: -1px;
+}
+
+.nav-link--active {
+  background: #080C14;
+  border-color: rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.35);
+  color: #FFFFFF;
+  box-shadow: 
+    inset 2px 3px 6px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.03),
+    0 0 14px rgba(var(--player-accent-rgb, 30, 108, 235), 0.25);
+  transform: translateY(0);
+}
+
+.nav-link--active::before {
+  background: linear-gradient(180deg, rgb(var(--player-accent-rgb, 30, 108, 235)) 0%, rgb(var(--player-accent-soft-rgb, 56, 189, 248)) 100%);
+  box-shadow: 0 0 8px rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.7);
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.nav-link--active .q-icon {
+  color: rgb(var(--player-accent-soft-rgb, 56, 189, 248));
+}
+
+.nav-link:disabled {
+  background: transparent !important;
+  color: var(--muted, #64748B) !important;
+  opacity: 0.45;
+  cursor: default;
+}
+
+.nav-link:disabled .q-icon {
+  color: var(--muted, #64748B) !important;
+}
+
+/* Playlists / Library section */
+.sidebar-group--playlists {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar-playlist-scroll {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.library-link {
+  position: relative;
+  display: grid;
+  min-height: 38px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.library-link::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: transparent;
+  content: '';
+  border-radius: 0 1px 1px 0;
+}
+
+.library-link:hover {
+  background: #141C2D;
+  color: #FFFFFF;
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4), -1px -1px 4px rgba(255, 255, 255, 0.02);
+}
+
+.library-link--active {
+  background: #0D1322;
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -1px -1px 2px rgba(255, 255, 255, 0.025);
+  color: #FFFFFF;
+}
+
+.library-link--active::before {
+  background: linear-gradient(180deg, rgb(var(--player-accent-rgb, 30, 108, 235)) 0%, rgb(var(--player-accent-soft-rgb, 56, 189, 248)) 100%);
+  box-shadow: 0 0 6px rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.6);
+}
+
+.library-link__cover,
+.library-link__cover--empty {
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+}
+
+.library-link__cover--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #080D16;
+  color: #64748B;
+}
+
+.library-link__cover--empty .q-icon {
+  font-size: 14px;
+}
+
+.library-link__copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #cbd5ce;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.library-link__copy small {
+  display: block;
+  margin-top: 1px;
+  color: #5d6760;
+  font-size: 9px;
+}
+
+/* Status & Presence */
+.sidebar-group--status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--color-1-rgb, 58, 224, 253), 0.08);
+}
+
+.sidebar-settings-link,
+.sidebar-support-link {
+  width: 100%;
+}
+
+.sidebar-presence {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px;
+  color: #5d6760;
+  font-size: 9px;
+}
+
+.sidebar-presence > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-presence > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(var(--player-accent-soft-rgb), 0.6);
+}
+
+.sidebar-presence .q-icon {
+  font-size: 12px;
+}
+
+@media (max-height: 760px) {
+  .sidebar-inner {
+    gap: 8px;
+    padding-top: 48px;
+    padding-bottom: 8px;
+  }
+
+  .sidebar-label,
+  .sidebar-section-heading {
+    min-height: 20px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .nav-link {
+    min-height: 28px;
+  }
+
+  .library-link {
+    min-height: 32px;
+  }
+
+  .library-link__copy small {
+    display: none;
+  }
+
+  .sidebar-group--status {
+    gap: 4px;
+    padding-top: 4px;
+  }
+}
+
+/* Grove keeps the pinned and account actions in normal flow so they cannot be
+   separated by a growing empty playlist region or clipped at short heights. */
+html[data-layout-preset='grove'] .sidebar-inner {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 12px;
+  scrollbar-width: thin;
+}
+
+html[data-layout-preset='grove'] .sidebar-group--playlists {
+  max-height: min(22dvh, 188px);
+  flex: 0 0 auto;
+}
+
+html[data-layout-preset='grove'] .sidebar-group--status {
+  flex: 0 0 auto;
+  margin-top: 0;
+}

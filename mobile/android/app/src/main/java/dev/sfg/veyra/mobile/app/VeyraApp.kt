@@ -1,0 +1,762 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.app
+
+import android.content.Context
+import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import dev.sfg.veyra.mobile.VeyraGraph
+import dev.sfg.veyra.mobile.model.CatalogKind
+import dev.sfg.veyra.mobile.model.LoadState
+import dev.sfg.veyra.mobile.model.LibraryFilter
+import dev.sfg.veyra.mobile.model.PlaybackTarget
+import dev.sfg.veyra.mobile.model.MobilePlayerMode
+import androidx.compose.ui.graphics.Color
+import dev.sfg.veyra.mobile.ui.components.ArtworkBackdrop
+import dev.sfg.veyra.mobile.ui.components.CanopyReadout
+import dev.sfg.veyra.mobile.ui.components.ObsidianHeaderHUD
+import dev.sfg.veyra.mobile.ui.components.OrchardBottomBar
+import dev.sfg.veyra.mobile.ui.components.PlaylistPickerSheet
+import dev.sfg.veyra.mobile.ui.components.SongShareBottomSheet
+import dev.sfg.veyra.mobile.ui.components.rememberArtworkPalette
+import dev.sfg.veyra.mobile.ui.components.transitionPresentation
+import dev.sfg.veyra.mobile.ui.glass.LocalGlass
+import dev.sfg.veyra.mobile.ui.glass.LocalGlassScene
+import dev.sfg.veyra.mobile.ui.glass.glassSceneSource
+import dev.sfg.veyra.mobile.ui.glass.glassWashSource
+import dev.sfg.veyra.mobile.ui.glass.rememberGlassScene
+import dev.sfg.veyra.mobile.ui.glass.rememberGlassStyle
+import dev.sfg.veyra.mobile.ui.navigation.Routes
+import dev.sfg.veyra.mobile.ui.scroll.VeyraScrollPhysics
+import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.screens.DetailScreen
+import dev.sfg.veyra.mobile.ui.screens.DevicesScreen
+import dev.sfg.veyra.mobile.ui.screens.HomeScreen
+import dev.sfg.veyra.mobile.ui.screens.LibraryScreen
+import dev.sfg.veyra.mobile.ui.screens.NativeLoginScreen
+import dev.sfg.veyra.mobile.ui.screens.SearchScreen
+import dev.sfg.veyra.mobile.ui.screens.SettingsScreen
+import dev.sfg.veyra.mobile.ui.screens.SettingsHomeLayout
+import dev.sfg.veyra.mobile.ui.screens.WelcomeScreen
+import dev.sfg.veyra.mobile.ui.theme.CanopyColors
+import dev.sfg.veyra.connect.R
+
+@Composable
+fun VeyraApp(viewModel: VeyraViewModel) {
+    val navController = rememberNavController()
+    val backStack by navController.currentBackStackEntryAsState()
+    val route = backStack?.destination?.route
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
+    val targets by viewModel.targets.collectAsStateWithLifecycle()
+    val library by viewModel.library.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val shareState by viewModel.shareState.collectAsStateWithLifecycle()
+    val warning by viewModel.warning.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val transitionMarker by viewModel.transitionMarker.collectAsStateWithLifecycle()
+    val qobuzStatus by viewModel.qobuzStatus.collectAsStateWithLifecycle()
+    // Transition plans belong to the phone's two-player engine, never a selected Connect target.
+    val localTransitionMarker =
+        transitionMarker.takeIf { targets.selected is PlaybackTarget.LocalPhone }
+    val playerPresentation = transitionPresentation(playback, localTransitionMarker)
+    val playerPlayback = playerPresentation.playback
+    // Once the incoming song owns the mix, its scrubber is a normal full-track scrubber. The raw
+    // overlap progress still drives the transition glow and artwork motion separately.
+    val playerMarker = localTransitionMarker.takeUnless { playerPresentation.incomingDominant }
+
+    // The player is an overlay, not a destination. As a destination the NavHost tore the
+    // screen underneath out of the tree, so dragging the player down uncovered nothing but
+    // black — and the pill it collapses into did not exist to animate towards.
+    var playerOpen by rememberSaveable { mutableStateOf(false) }
+    // Where the pill sits on screen, so the player can shrink into it rather than slide off.
+    var readoutBounds by remember { mutableStateOf<Rect?>(null) }
+    // And its thumbnail specifically, which the player's cover flies into.
+    var readoutArtworkBounds by remember { mutableStateOf<Rect?>(null) }
+    // Outlives the player so the cover can fly on the way in as well as on the way out.
+    var playerCoverBounds by remember { mutableStateOf<Rect?>(null) }
+
+    val chromeHidden = (route == Routes.DEVICES && !settings.frostedGlass) ||
+        route == Routes.LOGIN ||
+        route == Routes.ACCOUNT_SWITCH ||
+        route == Routes.WELCOME ||
+        route == Routes.QOBUZ_LOGIN ||
+        route == Routes.SPOTIFY_LOGIN
+    // Collection artwork runs under the status bar, so these screens take no top inset and
+    // apply it themselves where the content actually needs it.
+    val isDetail = route == Routes.DETAIL || route?.startsWith("detail") == true
+    val artworkUnderStatusBar = isDetail
+
+    // When in an album / collection, sample the album cover's palette so the frosted glass
+    // and bottom navigation dynamically reflect the album being viewed.
+    val detailState by viewModel.detail.collectAsStateWithLifecycle()
+    val detailArtwork by viewModel.detailArtwork.collectAsStateWithLifecycle()
+    val detailArtworkUrl = detailArtwork?.staticUrl?.takeIf { it.isNotBlank() }
+        ?: (detailState as? LoadState.Content)?.value?.artworkUrl.orEmpty()
+
+    val activeCoverUrl = if (isDetail && detailArtworkUrl.isNotBlank()) {
+        detailArtworkUrl
+    } else {
+        playerPlayback.currentTrack?.artworkUrl.orEmpty()
+    }
+
+    // Sampled once here and handed to both the wash and the glass panes, so the cover the app is
+    // tinted by and the cover its panes are tinted by can never disagree.
+    val backdropPalette = rememberArtworkPalette(activeCoverUrl)
+    val glassTint = animateColorAsState(
+        targetValue = backdropPalette.accent,
+        animationSpec = tween(900),
+        label = "GlassTint",
+    )
+    val glass = rememberGlassStyle(settings.frostedGlass, glassTint)
+    // Only exists while the treatment is on: with it off there is nothing to record, and the two
+    // layers should not be allocated at all.
+    val glassScene = if (settings.frostedGlass) rememberGlassScene() else null
+    val currentAccent = LocalAccent.current
+    val effectiveAccent = if (settings.frostedGlass) glassTint.value else currentAccent
+
+    CompositionLocalProvider(
+        LocalGlass provides glass,
+        LocalGlassScene provides glassScene,
+        LocalAccent provides effectiveAccent,
+        LocalOverscrollFactory provides VeyraScrollPhysics.overscrollFactory,
+    ) {
+        Scaffold(
+            // Transparent so the artwork wash below shows through every screen.
+            containerColor = Color.Transparent,
+        ) { padding ->
+            // Collection artwork runs under the status bar, so those screens take no top inset.
+            val contentInset = if (artworkUnderStatusBar) {
+                Modifier.padding(bottom = padding.calculateBottomPadding())
+            } else {
+                Modifier.padding(padding)
+            }
+
+            // Everything the chrome floats over is recorded here, and only here. A pane cannot
+            // blur a recording it is itself part of, which is why the pill and the bar were
+            // lifted out of this box and into the overlay below.
+            Box(Modifier.fillMaxSize().glassSceneSource(glassScene)) {
+                ArtworkBackdrop(
+                    palette = backdropPalette,
+                    animated = settings.animatedBackground,
+                    rich = settings.frostedGlass,
+                    artworkUrl = activeCoverUrl,
+                    isPlaying = playerPlayback.isPlaying,
+                    modifier = Modifier.glassWashSource(glassScene),
+                )
+
+                val isFoldable = dev.sfg.veyra.mobile.ui.foldable.isFoldableOrWideLayout()
+                val isObsidianHud = settings.playerMode == MobilePlayerMode.OBSIDIAN && !chromeHidden && playerPlayback.currentTrack != null
+                val targetHudTopInset = if (isObsidianHud) 124.dp else 0.dp
+                val hudTopInset by animateDpAsState(
+                    targetValue = targetHudTopInset,
+                    animationSpec = tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    label = "HudTopInset",
+                )
+                val safeHudTopInset = hudTopInset.coerceAtLeast(0.dp)
+                val contentModifier = if (isFoldable && !chromeHidden) {
+                    Modifier
+                        .fillMaxSize()
+                        .padding(start = dev.sfg.veyra.mobile.ui.foldable.FoldableNavRailWidth)
+                        .padding(top = safeHudTopInset)
+                        .then(contentInset)
+                } else {
+                    Modifier
+                        .fillMaxSize()
+                        .padding(top = safeHudTopInset)
+                        .then(contentInset)
+                }
+
+                Box(contentModifier) {
+                    OrchardNavigation(navController, viewModel, playback, targets, library, settings)
+                }
+            }
+
+            Box(Modifier.fillMaxSize()) {
+                val isFoldable = dev.sfg.veyra.mobile.ui.foldable.isFoldableOrWideLayout()
+                if (!chromeHidden) {
+                    if (isFoldable) {
+                        dev.sfg.veyra.mobile.ui.foldable.VeyraNavigationRail(
+                            currentRoute = route,
+                            onSelect = { navController.openTopLevel(it) },
+                            modifier = Modifier.align(Alignment.CenterStart),
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = dev.sfg.veyra.mobile.ui.foldable.FoldableNavRailWidth)
+                                .then(contentInset),
+                        ) {
+                            if (settings.playerMode == MobilePlayerMode.OBSIDIAN) {
+                                ObsidianHeaderHUD(
+                                    playback = playerPlayback,
+                                    onTogglePlay = viewModel::togglePlayback,
+                                    onPrevious = viewModel::previous,
+                                    onNext = viewModel::next,
+                                    onClick = { playerOpen = true },
+                                    onArtworkBounds = { readoutArtworkBounds = it },
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                                        .onGloballyPositioned { readoutBounds = it.boundsInRoot() }
+                                        .zIndex(20f),
+                                )
+                            } else {
+                                CanopyReadout(
+                                    playback = playerPlayback,
+                                    transition = playerMarker,
+                                    mixProgress = playerPresentation.progress,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .windowInsetsPadding(WindowInsets.navigationBars)
+                                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                                        .onGloballyPositioned { readoutBounds = it.boundsInRoot() },
+                                    onArtworkBounds = { readoutArtworkBounds = it },
+                                    onOpen = { playerOpen = true },
+                                    onToggle = viewModel::togglePlayback,
+                                    onNext = viewModel::next,
+                                    onPrevious = viewModel::previous,
+                                    onClear = {
+                                        playerOpen = false
+                                        viewModel.clearQueue()
+                                    },
+                                )
+                            }
+                        }
+                    } else {
+                        Box(Modifier.fillMaxSize().then(contentInset)) {
+                            if (settings.playerMode == MobilePlayerMode.OBSIDIAN) {
+                                ObsidianHeaderHUD(
+                                    playback = playerPlayback,
+                                    onTogglePlay = viewModel::togglePlayback,
+                                    onPrevious = viewModel::previous,
+                                    onNext = viewModel::next,
+                                    onClick = { playerOpen = true },
+                                    onArtworkBounds = { readoutArtworkBounds = it },
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                        .onGloballyPositioned { readoutBounds = it.boundsInRoot() }
+                                        .zIndex(20f),
+                                )
+                                Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars)) {
+                                    OrchardBottomBar(route) { navController.openTopLevel(it) }
+                                }
+                            } else {
+                                Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars)) {
+                                    CanopyReadout(
+                                        playback = playerPlayback,
+                                        transition = playerMarker,
+                                        mixProgress = playerPresentation.progress,
+                                        modifier = Modifier.onGloballyPositioned { readoutBounds = it.boundsInRoot() },
+                                        onArtworkBounds = { readoutArtworkBounds = it },
+                                        onOpen = { playerOpen = true },
+                                        onToggle = viewModel::togglePlayback,
+                                        onNext = viewModel::next,
+                                        onPrevious = viewModel::previous,
+                                        onClear = {
+                                            playerOpen = false
+                                            viewModel.clearQueue()
+                                        },
+                                    )
+                                    OrchardBottomBar(route) { navController.openTopLevel(it) }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Sibling of the padded content rather than a child of it: the player is
+                // edge-to-edge and draws its own insets, and it has to paint over the pill
+                // it collapses into.
+                NowPlayingOverlay(
+                    open = playerOpen,
+                    onOpenChange = { playerOpen = it },
+                    collapseBounds = readoutBounds,
+                    collapseArtworkBounds = readoutArtworkBounds,
+                    restingCoverBounds = playerCoverBounds,
+                    onRestingCoverBounds = { playerCoverBounds = it },
+                    nav = navController,
+                    viewModel = viewModel,
+                    playback = playerPlayback,
+                    transition = localTransitionMarker,
+                    mixProgress = playerPresentation.progress,
+                    targets = targets,
+                    library = library,
+                    settings = settings,
+                    modifier = Modifier.zIndex(50f),
+                )
+
+                dev.sfg.veyra.mobile.ui.components.WarningBanner(
+                    message = warning,
+                    onDismiss = viewModel::dismissWarning,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .zIndex(100f),
+                )
+
+                dev.sfg.veyra.mobile.ui.components.UpdateDialog(
+                    state = updateState,
+                    onInstall = viewModel::installUpdate,
+                    onDismiss = viewModel::dismissUpdate,
+                )
+            }
+        }
+
+        shareState?.let { state ->
+            SongShareBottomSheet(
+                state = state,
+                onDismiss = viewModel::dismissShare,
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrchardNavigation(
+    nav: NavHostController,
+    viewModel: VeyraViewModel,
+    playback: dev.sfg.veyra.mobile.model.PlaybackSnapshot,
+    targets: dev.sfg.veyra.mobile.model.PlaybackTargetState,
+    library: dev.sfg.veyra.mobile.model.LibrarySnapshot,
+    settings: dev.sfg.veyra.mobile.model.OrchardSettings,
+) {
+    val home by viewModel.home.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val search by viewModel.search.collectAsStateWithLifecycle()
+    val history by viewModel.searchHistory.collectAsStateWithLifecycle()
+    val detail by viewModel.detail.collectAsStateWithLifecycle()
+    val detailRefreshing by viewModel.detailRefreshing.collectAsStateWithLifecycle()
+    val detailArtwork by viewModel.detailArtwork.collectAsStateWithLifecycle()
+    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val artistImages by viewModel.artistImages.collectAsStateWithLifecycle()
+    val auth by viewModel.auth.collectAsStateWithLifecycle()
+    val discordAuth by viewModel.discordAuth.collectAsStateWithLifecycle()
+    val discordConnection by viewModel.discordConnection.collectAsStateWithLifecycle()
+    val lastfmState by viewModel.lastfmState.collectAsStateWithLifecycle()
+    val listenBrainzState by viewModel.listenBrainzState.collectAsStateWithLifecycle()
+    val libraryFilter by viewModel.libraryFilter.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val downloads by viewModel.downloads.collectAsStateWithLifecycle()
+    val downloadsList = androidx.compose.runtime.remember(downloads) { downloads.values.toList() }
+    val downloadedTrackIds by viewModel.downloadedTrackIds.collectAsStateWithLifecycle()
+    val downloadingTrackIds by viewModel.downloadingTrackIds.collectAsStateWithLifecycle()
+    val totalBytesUsed by viewModel.totalBytesUsed.collectAsStateWithLifecycle()
+    val cacheSizeBytes by viewModel.cacheSizeBytes.collectAsStateWithLifecycle()
+    val isClearingCache by viewModel.isClearingCache.collectAsStateWithLifecycle()
+    val qobuzStatus by viewModel.qobuzStatus.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val connectMessage by viewModel.connectMessage.collectAsStateWithLifecycle()
+    val connectProtocolVersion by viewModel.connectProtocolVersion.collectAsStateWithLifecycle()
+    val connectAudioEngine by viewModel.connectAudioEngine.collectAsStateWithLifecycle()
+    val connectRemoteVolume by viewModel.connectRemoteVolume.collectAsStateWithLifecycle()
+    val listeningParty by viewModel.listeningParty.collectAsStateWithLifecycle()
+    val localTargetSelected = targets.selected is PlaybackTarget.LocalPhone
+    val canControlQueue = localTargetSelected || connectProtocolVersion >= 2
+    val canShuffle = localTargetSelected || connectProtocolVersion >= 2
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val startDestination = if (settings.onboardingCompleted) Routes.HOME else Routes.WELCOME
+    var playlistPickerTrack by remember { mutableStateOf<dev.sfg.veyra.mobile.model.Track?>(null) }
+
+    // Without this a track the resolver refuses shows up only as the spinner stopping,
+    // which is indistinguishable from the play button having died. Keyed on the message
+    // so a repeated attempt on the same track says so again rather than staying silent.
+    LaunchedEffect(playback.errorMessage) {
+        if (playback.errorMessage.isNotBlank()) {
+            android.widget.Toast
+                .makeText(context, playback.errorMessage, android.widget.Toast.LENGTH_LONG)
+                .show()
+        }
+    }
+
+    NavHost(navController = nav, startDestination = startDestination) {
+        composable(Routes.WELCOME) {
+            WelcomeScreen(
+                settings = settings,
+                auth = auth,
+                onUpdateSettings = viewModel::updateSettings,
+                onSignIn = { nav.safeNavigate(Routes.LOGIN) },
+                onSignOut = viewModel::signOut,
+                onFinish = {
+                    viewModel.updateSettings(settings.copy(onboardingCompleted = true))
+                    nav.navigate(Routes.HOME) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable(Routes.HOME) {
+            HomeScreen(
+                settings = settings,
+                state = home,
+                library = library,
+                auth = auth,
+                downloads = downloadsList,
+                downloadedTrackIds = downloadedTrackIds,
+                isOffline = !isOnline,
+                onRefresh = viewModel::refreshHome,
+                onSearch = { nav.openTopLevel(Routes.SEARCH) },
+                onLibrary = { filter ->
+                    viewModel.selectLibraryFilter(filter)
+                    nav.openTopLevel(Routes.LIBRARY)
+                },
+                onDevices = { nav.safeNavigate(Routes.DEVICES) },
+                onPlay = { viewModel.play(it, context.getString(R.string.nav_home)) },
+                onOpenDetail = { id -> viewModel.openDetail(id); nav.safeNavigate(Routes.detail(id)) },
+                onEditLayout = { nav.safeNavigate(Routes.SETTINGS_HOME_LAYOUT) },
+                onToggleLike = viewModel::toggleLiked,
+                onPlayNext = if (canControlQueue) viewModel::playNext else null,
+                onAddToQueue = if (canControlQueue) viewModel::addToQueue else null,
+                onAddToPlaylist = { playlistPickerTrack = it },
+                onShare = viewModel::shareTrack,
+                onOpenProfile = { nav.openTopLevel(Routes.SETTINGS) },
+                onFetchSectionItems = viewModel::fetchSectionItems,
+                onPlayItem = viewModel::playItem,
+                onPlayCollection = { id, title -> viewModel.playCollection(id, title) },
+            )
+        }
+        composable(Routes.SEARCH) {
+            SearchScreen(
+                query = query,
+                state = search,
+                history = history,
+                onQueryChange = viewModel::updateQuery,
+                onSubmit = viewModel::runSearch,
+                onClearHistory = viewModel::clearSearchHistory,
+                onRemoveHistoryItem = viewModel::removeSearchHistoryItem,
+                downloadedTrackIds = downloadedTrackIds,
+                downloadingTrackIds = downloadingTrackIds,
+                onPlay = { viewModel.play(it, context.getString(R.string.nav_search)) },
+                onPlayNext = if (canControlQueue) viewModel::playNext else null,
+                onAddToQueue = if (canControlQueue) viewModel::addToQueue else null,
+                onAddToPlaylist = { playlistPickerTrack = it },
+                onDownloadTrack = viewModel::downloadTrack,
+                onRemoveDownloadTrack = viewModel::removeDownload,
+                onOpenDetail = { id -> viewModel.openDetail(id); nav.safeNavigate(Routes.detail(id)) },
+                onShare = viewModel::shareTrack,
+            )
+        }
+        composable(Routes.LIBRARY) {
+            LibraryScreen(
+                library = library,
+                filter = libraryFilter,
+                onFilterChange = viewModel::selectLibraryFilter,
+                downloads = downloadsList,
+                downloadedTrackIds = downloadedTrackIds,
+                downloadingTrackIds = downloadingTrackIds,
+                totalBytesUsed = totalBytesUsed,
+                onPlay = { viewModel.play(it, libraryFilter.sourceTitle(context)) },
+                onPlayNext = if (canControlQueue) viewModel::playNext else null,
+                onAddToQueue = if (canControlQueue) viewModel::addToQueue else null,
+                onOpenDetail = { id -> viewModel.openDetail(id); nav.safeNavigate(Routes.detail(id)) },
+                onDownloadTrack = viewModel::downloadTrack,
+                onRemoveDownloadTrack = viewModel::removeDownload,
+                onShare = viewModel::shareTrack,
+            )
+        }
+        composable(Routes.DOWNLOADS) {
+            dev.sfg.veyra.mobile.ui.screens.DownloadsScreen(
+                downloads = downloadsList,
+                totalBytesUsed = totalBytesUsed,
+                onPlay = { viewModel.play(it, context.getString(R.string.library_filter_downloads)) },
+                onRemoveDownload = viewModel::removeDownload,
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                settings = settings,
+                auth = auth,
+                discordAuth = discordAuth,
+                discordConnection = discordConnection,
+                lastfmState = lastfmState,
+                listenBrainzState = listenBrainzState,
+                updateState = updateState,
+                cacheSizeBytes = cacheSizeBytes,
+                isClearingCache = isClearingCache,
+                onClearCache = {
+                    viewModel.clearCache { bytesCleared ->
+                        val formatted = dev.sfg.veyra.mobile.settings.CacheManager.formatStorageSize(bytesCleared)
+                        android.widget.Toast.makeText(context, context.getString(R.string.home_cache_cleared, formatted), android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onRefreshCacheSize = viewModel::refreshCacheSize,
+                onSettings = viewModel::updateSettings,
+                onAutoplayEnabled = viewModel::setAutoplayEnabled,
+                onSignIn = { nav.safeNavigate(Routes.LOGIN) },
+                onSwitchAccount = { nav.safeNavigate(Routes.ACCOUNT_SWITCH) },
+                onSignOut = viewModel::signOut,
+                onConnectDiscord = { viewModel.connectDiscord(context) },
+                onDisconnectDiscord = viewModel::disconnectDiscord,
+                onConnectLastfm = { viewModel.connectLastfm(context) },
+                onCompleteLastfm = viewModel::completeLastfmConnection,
+                onDisconnectLastfm = viewModel::disconnectLastfm,
+                onConnectListenBrainz = viewModel::connectListenBrainz,
+                onDisconnectListenBrainz = viewModel::disconnectListenBrainz,
+                onConnectSpotify = { nav.safeNavigate(Routes.SPOTIFY_LOGIN) },
+                qobuzStatus = qobuzStatus,
+                onConnectQobuz = { nav.safeNavigate(Routes.QOBUZ_LOGIN) },
+                onDisconnectQobuz = viewModel::disconnectQobuz,
+                onQobuzEnabledChange = viewModel::setQobuzEnabled,
+                onQobuzQualityChange = viewModel::setQobuzQuality,
+                onDevices = { nav.safeNavigate(Routes.DEVICES) },
+                onWelcome = { nav.safeNavigate(Routes.WELCOME) },
+                onCheckForUpdates = viewModel::checkForUpdates,
+                onInstallUpdate = viewModel::installUpdate,
+                onHomeLayout = { nav.safeNavigate(Routes.SETTINGS_HOME_LAYOUT) },
+            )
+        }
+        composable(Routes.SETTINGS_HOME_LAYOUT) {
+            SettingsHomeLayout(
+                settings = settings,
+                auth = auth,
+                onSettings = viewModel::updateSettings,
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.LOGIN) {
+            NativeLoginScreen(
+                auth = auth,
+                onBegin = viewModel::beginSignIn,
+                onSession = viewModel::completeSignIn,
+                onCancel = viewModel::cancelSignIn,
+                // Scoped to this entry so a repeated call cannot pop whatever
+                // sent the user here. From Welcome that would be the whole back
+                // stack, leaving an empty NavHost and a black screen.
+                onComplete = { nav.popBackStack(Routes.LOGIN, inclusive = true) },
+            )
+        }
+        composable(Routes.ACCOUNT_SWITCH) {
+            NativeLoginScreen(
+                auth = auth,
+                onBegin = viewModel::beginSignIn,
+                onSession = viewModel::completeSignIn,
+                onCancel = viewModel::cancelSignIn,
+                onComplete = { nav.popBackStack(Routes.ACCOUNT_SWITCH, inclusive = true) },
+                switchingAccount = true,
+            )
+        }
+        composable(Routes.SPOTIFY_LOGIN) {
+            dev.sfg.veyra.mobile.ui.screens.SpotifyLoginScreen(
+                onSpdcCaptured = { spdc ->
+                    viewModel.updateSettings(settings.copy(spotifySpdc = spdc))
+                    nav.popBackStack()
+                },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.QOBUZ_LOGIN) {
+            val graph = VeyraGraph.from(context)
+            dev.sfg.veyra.mobile.ui.screens.QobuzLoginScreen(
+                bootstrapLoader = graph.qobuzResolver.bootstrapLoader,
+                onSuccess = { token, userId ->
+                    viewModel.connectQobuz(token, userId)
+                    nav.popBackStack()
+                },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.DETAIL,
+            arguments = listOf(navArgument("id") { type = androidx.navigation.NavType.StringType }),
+        ) { entry ->
+            val id = entry.arguments?.getString("id").orEmpty()
+            // A restored navigation stack may recreate this screen after the
+            // process state holder has been lost; reload its actual route id.
+            androidx.compose.runtime.LaunchedEffect(id) {
+                val current = (detail as? LoadState.Content)?.value?.id
+                if (id.isNotBlank() && current != id) viewModel.openDetail(id)
+            }
+            val isSaved = (detail as? LoadState.Content)?.value?.let { detailVal ->
+                when (detailVal.kind) {
+                    CatalogKind.ALBUM -> library.savedAlbums.any { it.id == detailVal.id }
+                    CatalogKind.PLAYLIST -> library.savedPlaylists.any { it.id == detailVal.id }
+                    CatalogKind.ARTIST -> library.savedArtists.any { it.id == detailVal.id }
+                    CatalogKind.TRACK -> false
+                }
+            } ?: false
+
+            // The hero is square, so the wide asset crops far better than the 9:16 one the
+            // full player wants; vertical is only a fallback when there is nothing else.
+            val animatedArtworkUrl = if (settings.animatedArtwork) {
+                detailArtwork?.let { it.videoUrl.ifBlank { it.videoUrlVertical } }.orEmpty()
+            } else ""
+
+            // Only artist pages swap in TheAudioDB's photograph; albums keep their cover, which
+            // also drives the page palette.
+            val portrait = artistImages?.portraitUrl.orEmpty()
+            val shownDetail = (detail as? LoadState.Content)
+                ?.takeIf { portrait.isNotBlank() && it.value.kind == CatalogKind.ARTIST }
+                ?.let { LoadState.Content(it.value.copy(artworkUrl = portrait)) }
+                ?: detail
+
+            DetailScreen(
+                state = shownDetail,
+                onBack = nav::popBackStack,
+                onPlayAll = { tracks, source -> viewModel.playAll(tracks, contextTitle = source) },
+                onShuffle = { tracks, source -> viewModel.shuffleAll(tracks, source) },
+                shuffleAvailable = canShuffle,
+                onPlay = { track, source -> viewModel.play(track, source) },
+                onPlayTrack = { tracks, index, source -> viewModel.playAll(tracks, startIndex = index, contextTitle = source) },
+                onPlayNext = if (canControlQueue) viewModel::playNext else null,
+                onAddToQueue = if (canControlQueue) viewModel::addToQueue else null,
+                onAddToPlaylist = { playlistPickerTrack = it },
+                onRemoveFromPlaylist = viewModel::removeTrackFromCurrentPlaylist,
+                onMovePlaylistTrack = viewModel::moveTrackInCurrentPlaylist,
+                onSave = viewModel::saveDetail,
+                onOpenDetail = { next -> viewModel.openDetail(next); nav.safeNavigate(Routes.detail(next)) },
+                isSaved = isSaved,
+                downloadedTrackIds = downloadedTrackIds,
+                downloadingTrackIds = downloadingTrackIds,
+                onDownloadTrack = viewModel::downloadTrack,
+                onDownloadTracks = viewModel::downloadTracks,
+                onRemoveDownloadTrack = viewModel::removeDownload,
+                onRemoveDownloadTracks = viewModel::removeDownloads,
+                animatedArtworkUrl = animatedArtworkUrl,
+                artistPortraitUrl = artistImages?.portraitUrl.orEmpty(),
+                onShareTrack = viewModel::shareTrack,
+                onShareCollection = viewModel::shareCollection,
+                onFetchSectionItems = viewModel::fetchSectionItems,
+                smartCrossfadeEnabled = settings.smartCrossfade,
+                bestMixSupabaseSync = settings.bestMixSupabaseSync,
+                onPlayBestMix = viewModel::playBestMix,
+                isRefreshing = detailRefreshing,
+                onRefresh = viewModel::refreshDetail,
+            )
+        }
+        composable(Routes.DEVICES) {
+            DevicesScreen(
+                targets = targets,
+                connectMessage = connectMessage,
+                protocolVersion = connectProtocolVersion,
+                audioEngine = connectAudioEngine,
+                party = listeningParty,
+                onBack = nav::popBackStack,
+                onSelect = viewModel::selectTarget,
+                onPair = viewModel::pairDevice,
+                onDisconnect = viewModel::disconnectDevice,
+                onPresetSelect = viewModel::setAudioEnginePreset,
+                onToggleAutoEq = viewModel::toggleAutoEq,
+                onToggleManualEq = viewModel::toggleManualEq,
+                onCreateParty = { viewModel.createListeningParty() },
+                onJoinParty = { viewModel.joinListeningParty(it) },
+                onLeaveParty = viewModel::leaveListeningParty,
+                onRenameDevice = viewModel::renameDevice,
+                onRemoveDevice = viewModel::removeDevice,
+            )
+        }
+    }
+
+    playlistPickerTrack?.let { track ->
+        PlaylistPickerSheet(
+            track = track,
+            playlists = library.savedPlaylists,
+            onDismiss = { playlistPickerTrack = null },
+            onSelect = { playlist ->
+                playlistPickerTrack = null
+                viewModel.addTrackToPlaylist(playlist.id, track)
+            },
+        )
+    }
+}
+
+private fun NavHostController.safeNavigate(route: String) {
+    if (currentDestination?.route == route) return
+    runCatching {
+        navigate(route) {
+            launchSingleTop = true
+        }
+    }
+}
+
+private fun NavHostController.openTopLevel(route: String) {
+    val homeId = graph.findNode(Routes.HOME)?.id ?: graph.findStartDestination().id
+    if (route == Routes.HOME) {
+        if (currentDestination?.route == Routes.HOME) return
+        val popped = popBackStack(homeId, inclusive = false)
+        if (!popped) {
+            runCatching {
+                navigate(Routes.HOME) {
+                    popUpTo(homeId) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
+        }
+        return
+    }
+    if (currentDestination?.route == route) return
+    runCatching {
+        navigate(route) {
+            popUpTo(homeId) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+}
+
+private fun LibraryFilter.sourceTitle(context: Context): String = when (this) {
+    LibraryFilter.PLAYLISTS -> context.getString(R.string.library_your_playlists)
+    LibraryFilter.ARTISTS -> context.getString(R.string.home_source_your_artists)
+    LibraryFilter.ALBUMS -> context.getString(R.string.home_source_your_albums)
+    LibraryFilter.SONGS -> context.getString(R.string.home_source_liked_songs)
+    LibraryFilter.RECENT -> context.getString(R.string.library_recently_played)
+    LibraryFilter.DOWNLOADS -> context.getString(R.string.library_filter_downloads)
+}

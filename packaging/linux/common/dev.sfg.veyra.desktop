@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Veyra Music
+Comment=Veyra Music player by AKASHI DEV
+Exec=veyra %U
+Icon=dev.akashi.veyra
+Terminal=false
+Categories=Audio;AudioVideo;Player;
+StartupNotify=true
+StartupWMClass=dev.akashi.veyra

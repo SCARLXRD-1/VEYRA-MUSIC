@@ -1,0 +1,102 @@
+/*
+ * Copyright (C) 2026 SFG545
+ * Copyright (C) 2026 AKASHI DEV
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* Ambient glow & reactive artwork atmosphere */
+
+.player-bar::before {
+  content: '';
+  position: absolute;
+  inset: -6px -14px;
+  border-radius: calc(var(--radius-dock, 26px) + 8px);
+  background: radial-gradient(
+    ellipse at 50% 65%,
+    rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.16) 0%,
+    rgba(var(--player-accent-rgb, 30, 108, 235), 0.09) 50%,
+    transparent 78%
+  );
+  filter: blur(20px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: -1;
+  transform: translateZ(0);
+  transition: opacity 0.4s ease;
+}
+
+.player-bar:not(.player-bar--empty)::before {
+  animation: ambientAuraPulse 4.8s ease-in-out infinite alternate;
+}
+
+@keyframes ambientAuraPulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.99) translateZ(0);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1.015) translateZ(0);
+  }
+}
+
+/* Ambient glow for Obsidian — Slate Industrial titlebar HUD */
+html[data-layout-preset="canopy"] .canopy-bar::before {
+  content: '';
+  position: absolute;
+  inset: -4px -12px;
+  border-radius: 18px;
+  background: radial-gradient(
+    ellipse at 50% 10%,
+    rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.14) 0%,
+    rgba(var(--player-accent-rgb, 30, 108, 235), 0.07) 55%,
+    transparent 82%
+  );
+  filter: blur(18px);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: -1;
+  transform: translateZ(0);
+  transition: opacity 0.4s ease;
+}
+
+html[data-layout-preset="canopy"] .canopy-bar:not(.canopy-bar--empty)::before {
+  animation: canopyAuraPulse 5s ease-in-out infinite alternate;
+}
+
+@keyframes canopyAuraPulse {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.995) translateZ(0);
+  }
+  100% {
+    opacity: 0.75;
+    transform: scale(1.01) translateZ(0);
+  }
+}
+
+/* Accessible reduced motion override */
+@media (prefers-reduced-motion: reduce) {
+  .player-bar::before,
+  html[data-layout-preset="canopy"] .canopy-bar::before {
+    animation: none !important;
+  }
+}

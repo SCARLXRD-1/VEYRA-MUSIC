@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The launcher mark's two colours live here rather than inside the vector so a
+    build type can restyle the icon by overriding this file alone, leaving the
+    single copy of the path untouched.
+-->
+<resources>
+    <!-- Veyra Music Obsidian Deep y Azul Eléctrico -->
+    <color name="ic_launcher_background">#0B0F19</color>
+    <color name="ic_launcher_foreground">#1E6CEB</color>
+</resources>

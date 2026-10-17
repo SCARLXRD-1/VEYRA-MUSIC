@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.akashi.veyra</id>
+  <name>Veyra Music</name>
+  <summary>High fidelity YouTube Music client by AKASHI DEV</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <launchable type="desktop-id">dev.akashi.veyra.desktop</launchable>
+  <url type="homepage">https://github.com/SCARLXRD-1/VEYRA-MUSIC</url>
+  <description>
+    <p>Install, open, and update Veyra Music through the lightweight Veyra Packages service.</p>
+  </description>
+</component>

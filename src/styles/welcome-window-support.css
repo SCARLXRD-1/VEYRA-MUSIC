@@ -1,0 +1,74 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+.welcome-support-dialog {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 48px 28px 28px;
+  background: #050505;
+}
+
+.welcome-support-dialog .support-view {
+  width: min(1120px, 100%);
+  height: calc(100vh - 76px);
+}
+
+.welcome-support-dialog__close {
+  position: fixed;
+  z-index: 2;
+  top: 14px;
+  right: 16px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 13px;
+  background: linear-gradient(145deg, #141C2C, #0E1422);
+  box-shadow: 
+    4px 4px 10px rgba(0, 0, 0, 0.6),
+    -2px -2px 6px rgba(255, 255, 255, 0.04),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05);
+  color: #94A3B8;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.welcome-support-dialog__close:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(145deg, #182338, #101828);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 
+    6px 6px 14px rgba(0, 0, 0, 0.7),
+    -3px -3px 8px rgba(255, 255, 255, 0.06);
+  color: #F8FAFC;
+}
+
+.welcome-support-dialog__close:active {
+  transform: translateY(1px);
+  background: linear-gradient(145deg, #090E18, #0E1524);
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.75),
+    inset -1px -1px 4px rgba(255, 255, 255, 0.035);
+}

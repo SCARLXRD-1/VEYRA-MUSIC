@@ -1,0 +1,1721 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.app
+
+import android.app.Application
+import android.os.Build
+import dev.sfg.veyra.mobile.audio.selfDeviceLabel
+import dev.sfg.veyra.mobile.audio.selfDeviceWord
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import dev.sfg.veyra.connect.R
+import dev.sfg.veyra.connect.protocol.ConnectCommand
+import dev.sfg.veyra.mobile.VeyraGraph
+import dev.sfg.veyra.mobile.auth.AuthState
+import dev.sfg.veyra.mobile.artwork.ArtistImages
+import dev.sfg.veyra.mobile.artwork.TrackArtwork
+import dev.sfg.veyra.mobile.catalog.needsAudioVersionLookup
+import dev.sfg.veyra.mobile.catalog.PlaylistActions
+import dev.sfg.veyra.mobile.model.*
+import dev.sfg.veyra.mobile.connect.PlaybackTargetCoordinator
+import dev.sfg.veyra.mobile.playback.AutoplayRecommendations
+import dev.sfg.veyra.mobile.playback.ListeningPartyManager
+import dev.sfg.veyra.mobile.playback.LocalPlaybackController
+import dev.sfg.veyra.mobile.playback.QueueEditor
+import dev.sfg.veyra.mobile.auth.SupabaseSyncService
+import dev.sfg.veyra.mobile.playback.smart.BestMixSorter
+import dev.sfg.veyra.mobile.playback.smart.TrackFeatures
+import dev.sfg.veyra.mobile.settings.CacheManager
+import dev.sfg.veyra.mobile.social.PartyState
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import dev.sfg.veyra.mobile.songlinks.LinkResolution
+import dev.sfg.veyra.mobile.songlinks.SongLinksCoordinator
+import dev.sfg.veyra.mobile.songlinks.SongShareState
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+
+internal data class DesktopTransferPlan(
+    val tracks: List<Track>,
+    val startIndex: Int,
+    val repeatMode: RepeatMode,
+)
+
+data class MusicVideoState(
+    val trackId: String = "",
+    val videoId: String = "",
+    val checking: Boolean = false,
+    val playing: Boolean = false,
+) {
+    val available: Boolean get() = videoId.isNotBlank()
+}
+
+internal fun desktopTransferPlan(track: Track?, queue: List<Track>, repeatMode: String): DesktopTransferPlan {
+    val tracks = when {
+        track == null -> queue
+        queue.any { it.id == track.id } -> queue
+        else -> listOf(track) + queue
+    }.filter { it.id.isNotBlank() }.distinctBy(Track::id)
+    val startIndex = track
+        ?.let { current -> tracks.indexOfFirst { it.id == current.id } }
+        ?.takeIf { it >= 0 }
+        ?: 0
+    val repeat = when (repeatMode.lowercase()) {
+        "one" -> RepeatMode.ONE
+        "queue", "all" -> RepeatMode.ALL
+        else -> RepeatMode.OFF
+    }
+    return DesktopTransferPlan(tracks, startIndex, repeat)
+}
+
+/** Presentation state holder for the standalone shell and both playback targets. */
+@OptIn(FlowPreview::class)
+class VeyraViewModel(application: Application) : AndroidViewModel(application) {
+    private val graph = VeyraGraph.from(application)
+    private val songLinksCoordinator = SongLinksCoordinator(graph.songLinks, viewModelScope, application)
+    val shareState: StateFlow<SongShareState?> = songLinksCoordinator.shareState
+    private val local = LocalPlaybackController(application, viewModelScope)
+    val videoPlayer: StateFlow<androidx.media3.common.Player?> = local.player
+    private val mutableMusicVideo = MutableStateFlow(MusicVideoState())
+    val musicVideo: StateFlow<MusicVideoState> = mutableMusicVideo.asStateFlow()
+
+    /**
+     * Scoped here rather than on the graph, unlike most repositories: it drives
+     * [LocalPlaybackController], which is itself created and closed with this view model, so a
+     * longer-lived party would outlive the player it commands.
+     */
+    private val party = ListeningPartyManager(
+        context = application,
+        http = graph.http,
+        scope = viewModelScope,
+        player = local,
+        displayName = Build.MODEL.takeIf(String::isNotBlank) ?: application.selfDeviceLabel(),
+    )
+    val listeningParty: StateFlow<PartyState> = party.state
+    private val targetCoordinator = PlaybackTargetCoordinator(
+        PlaybackDevice(
+            id = "local-phone",
+            name = Build.MODEL.takeIf(String::isNotBlank) ?: application.selfDeviceLabel(),
+            type = DeviceType.PHONE,
+            availability = DeviceAvailability.ONLINE,
+            isLocal = true,
+        ),
+        context = application,
+        selfWord = application.selfDeviceWord(),
+    )
+    private val mutableTargets = MutableStateFlow(targetCoordinator.state)
+    val targets: StateFlow<PlaybackTargetState> = mutableTargets.asStateFlow()
+    private val targetPlayback: StateFlow<PlaybackSnapshot> = combine(
+        local.snapshot,
+        graph.connect.snapshot,
+        mutableTargets,
+    ) { localSnapshot, remoteSnapshot, targetState ->
+        when (targetState.selected) {
+            PlaybackTarget.LocalPhone -> localSnapshot
+            is PlaybackTarget.Remote -> remoteSnapshot
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackSnapshot())
+    private val mutableArtwork = MutableStateFlow<TrackArtwork?>(null)
+    private val mutableArtistCredits = MutableStateFlow<Pair<String, List<dev.sfg.veyra.mobile.model.Artist>>?>(null)
+    val playback: StateFlow<PlaybackSnapshot> = combine(
+        targetPlayback,
+        mutableArtwork,
+        mutableArtistCredits,
+    ) { snapshot, artwork, artistCredits ->
+        val track = snapshot.currentTrack
+        if (track == null) return@combine snapshot
+        val matchingArtwork = artwork?.takeIf { it.trackId == track.id }
+        val matchingArtists = artistCredits?.takeIf { it.first == track.id }?.second.orEmpty()
+        snapshot.copy(
+            currentTrack = track.copy(
+                artworkUrl = matchingArtwork?.staticUrl?.ifBlank { track.artworkUrl } ?: track.artworkUrl,
+                animatedArtworkUrl = matchingArtwork?.videoUrl?.ifBlank { track.animatedArtworkUrl }
+                    ?: track.animatedArtworkUrl,
+                animatedArtworkVerticalUrl = matchingArtwork?.videoUrlVertical
+                    ?.ifBlank { track.animatedArtworkVerticalUrl }
+                    ?: track.animatedArtworkVerticalUrl,
+                artists = matchingArtists.ifEmpty { track.artists },
+            ),
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackSnapshot())
+
+    private val mutableHome = MutableStateFlow<LoadState<List<CatalogSection>>>(LoadState.Loading)
+    val home: StateFlow<LoadState<List<CatalogSection>>> = mutableHome.asStateFlow()
+    private val searchQuery = MutableStateFlow("")
+    val query: StateFlow<String> = searchQuery.asStateFlow()
+    private val mutableSearch = MutableStateFlow<LoadState<SearchResults>>(LoadState.Idle)
+    val search: StateFlow<LoadState<SearchResults>> = mutableSearch.asStateFlow()
+    private val mutableDetail = MutableStateFlow<LoadState<BrowseDetail>>(LoadState.Idle)
+    val detail: StateFlow<LoadState<BrowseDetail>> = mutableDetail.asStateFlow()
+    private val mutableDetailRefreshing = MutableStateFlow(false)
+    val detailRefreshing: StateFlow<Boolean> = mutableDetailRefreshing.asStateFlow()
+    private val mutableDetailArtwork = MutableStateFlow<TrackArtwork?>(null)
+    val detailArtwork: StateFlow<TrackArtwork?> = mutableDetailArtwork.asStateFlow()
+    private val mutableArtistImages = MutableStateFlow<ArtistImages?>(null)
+    val artistImages: StateFlow<ArtistImages?> = mutableArtistImages.asStateFlow()
+    val library: StateFlow<LibrarySnapshot> = graph.library.library
+    private val mutableLibraryFilter = MutableStateFlow(LibraryFilter.PLAYLISTS)
+    val libraryFilter: StateFlow<LibraryFilter> = mutableLibraryFilter.asStateFlow()
+    val settings: StateFlow<OrchardSettings> = graph.settings.settings
+    val searchHistory: StateFlow<List<String>> = graph.settings.searchHistory
+    val auth: StateFlow<AuthState> = graph.auth.state
+    val connectMessage: StateFlow<String> = graph.connect.message
+    val connectProtocolVersion: StateFlow<Int> = graph.connect.protocolVersion
+    val connectAudioEngine: StateFlow<dev.sfg.veyra.connect.protocol.ConnectAudioEngine> = graph.connect.audioEngine
+    val connectRemoteVolume: StateFlow<Float> = graph.connect.remoteVolume
+    private val mutableLyrics = MutableStateFlow<LoadState<List<LyricLine>>>(LoadState.Idle)
+    val lyrics: StateFlow<LoadState<List<LyricLine>>> = mutableLyrics.asStateFlow()
+    val discordAuth: StateFlow<dev.sfg.veyra.mobile.discord.DiscordAuthState> = graph.discordAuth.authState
+    val discordConnection: StateFlow<dev.sfg.veyra.mobile.discord.GatewayConnectionState> = graph.discordPresence.connectionState
+    val qobuzStatus: StateFlow<dev.sfg.veyra.mobile.qobuz.QobuzStatus> = graph.qobuz.status
+    val activeTrackIsQobuz: StateFlow<Boolean> = graph.activeTrackIsQobuz.asStateFlow()
+
+    fun connectQobuz(token: String, userId: Long) = graph.qobuz.connect(token, userId)
+    fun disconnectQobuz() = graph.qobuz.disconnect()
+    fun setQobuzEnabled(enabled: Boolean) = graph.qobuz.setEnabled(enabled)
+    fun setQobuzQuality(quality: dev.sfg.veyra.mobile.qobuz.QobuzQuality) = graph.qobuz.setQuality(quality)
+
+    val lastfmState: StateFlow<dev.sfg.veyra.mobile.lastfm.LastfmState> = graph.lastfm.state
+    val listenBrainzState: StateFlow<dev.sfg.veyra.mobile.listenbrainz.ListenBrainzState> = graph.listenBrainz.state
+
+    val activeBitrate: StateFlow<Int> = graph.activeBitrate.asStateFlow()
+    val isOnline: StateFlow<Boolean> = graph.networkMonitor.isOnline
+    val downloads: StateFlow<Map<String, dev.sfg.veyra.mobile.download.DownloadItem>> = graph.downloads.downloads
+    val downloadedTrackIds: StateFlow<Set<String>> = graph.downloads.downloadedTrackIds
+    val downloadingTrackIds: StateFlow<Set<String>> = graph.downloads.downloadingTrackIds
+    val totalBytesUsed: StateFlow<Long> = graph.downloads.totalBytesUsedFlow
+
+    fun downloadTrack(track: Track) = graph.downloads.downloadTrack(track)
+    fun downloadTracks(tracks: List<Track>) = graph.downloads.downloadTracks(tracks)
+    fun removeDownload(videoId: String) = graph.downloads.removeDownload(videoId)
+    fun removeDownloads(tracks: List<Track>) = graph.downloads.removeDownloads(tracks.map { it.id })
+
+    fun createPlaylist(title: String, track: Track, onCreated: (String) -> Unit = {}) = viewModelScope.launch {
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val playbackTrack = graph.audioVersions.audioVersion(track)
+                graph.playlistActions.create(title, playbackTrack.id)
+            }
+        }
+            .onSuccess(onCreated)
+            .onFailure { graph.postWarning(it.message ?: getApplication<Application>().getString(R.string.msg_could_not_create_playlist)) }
+    }
+    fun addTrackToPlaylist(playlistId: String, track: Track) = viewModelScope.launch {
+        val likedMusic = PlaylistActions.isLikedMusicPlaylist(playlistId)
+        runCatching {
+            withContext(Dispatchers.IO) {
+                // Album and playlist rows can point at an official video even though playback
+                // replaces it with the matching album-audio id. Persist that same version so
+                // adding a row and playing it cannot select two different recordings.
+                val playbackTrack = graph.audioVersions.audioVersion(track)
+                graph.playlistActions.add(playlistId, playbackTrack.id)
+                graph.catalog.browse(if (likedMusic) PlaylistActions.LIKED_MUSIC_BROWSE_ID else playlistId)
+            }
+        }.onSuccess {
+            if (likedMusic) graph.library.setLiked(track, true)
+            applyRefreshedPlaylist(it)
+        }
+            .onFailure { graph.postWarning(it.message ?: getApplication<Application>().getString(R.string.msg_could_not_add_to_playlist)) }
+    }
+    fun removeTrackFromPlaylist(playlistId: String, track: Track) = viewModelScope.launch {
+        val likedMusic = PlaylistActions.isLikedMusicPlaylist(playlistId)
+        runCatching { withContext(Dispatchers.IO) { graph.playlistActions.remove(playlistId, track.id) } }
+            .onSuccess {
+                if (likedMusic) graph.library.setLiked(track, false)
+                applyRemovedPlaylistTrack(playlistId, track.id)
+            }
+            .onFailure { graph.postWarning(it.message ?: getApplication<Application>().getString(R.string.msg_could_not_remove_from_playlist)) }
+    }
+
+    /**
+     * Reflect a confirmed removal without immediately re-reading YouTube's eventually consistent
+     * playlist page. Removing by index matters because playlists may contain the same song twice.
+     */
+    private fun applyRemovedPlaylistTrack(playlistId: String, videoId: String) {
+        val active = (mutableDetail.value as? LoadState.Content)?.value ?: return
+        if (active.id.removePrefix("VL") != playlistId.removePrefix("VL")) return
+        val updated = active.withPlaylistTrackRemoved(videoId)
+        if (updated === active) return
+        mutableDetail.value = LoadState.Content(updated)
+        graph.library.refreshPlaylist(
+            Playlist(updated.id, updated.title, updated.subtitle, updated.artworkUrl, updated.description, updated.tracks),
+        )
+    }
+
+    private fun applyRefreshedPlaylist(refreshed: BrowseDetail) {
+        val activeId = (mutableDetail.value as? LoadState.Content)?.value?.id.orEmpty().removePrefix("VL")
+        if (activeId == refreshed.id.removePrefix("VL")) mutableDetail.value = LoadState.Content(refreshed)
+        graph.library.refreshPlaylist(
+            Playlist(refreshed.id, refreshed.title, refreshed.subtitle, refreshed.artworkUrl, refreshed.description, refreshed.tracks),
+        )
+    }
+    fun deletePlaylist(playlistId: String) = viewModelScope.launch {
+        runCatching {
+            withContext(Dispatchers.IO) { graph.playlistActions.delete(playlistId) }
+            graph.library.removePlaylist(playlistId)
+        }.onFailure { graph.postWarning(it.message ?: getApplication<Application>().getString(R.string.msg_could_not_delete_playlist)) }
+    }
+
+    // Menu entry points. The picker UI supplies the target playlist through the public methods above.
+    fun addTrackToPlaylistMenu(track: Track) = graph.postWarning(getApplication<Application>().getString(R.string.msg_choose_playlist_for_track, track.title))
+    fun removeTrackFromCurrentPlaylist(track: Track) {
+        val id = (detail.value as? LoadState.Content)?.value?.id.orEmpty()
+        if (id.isNotBlank()) removeTrackFromPlaylist(id, track)
+    }
+
+    fun moveTrackInCurrentPlaylist(fromIndex: Int, toIndex: Int) {
+        val active = (detail.value as? LoadState.Content)?.value ?: return
+        if (active.kind != CatalogKind.PLAYLIST || !active.editable) return
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { graph.playlistActions.move(active.id, fromIndex, toIndex) }
+            }.onSuccess {
+                val current = (mutableDetail.value as? LoadState.Content)?.value ?: return@onSuccess
+                if (current.id.removePrefix("VL") != active.id.removePrefix("VL")) return@onSuccess
+                val updated = current.withPlaylistTrackMoved(fromIndex, toIndex)
+                mutableDetail.value = LoadState.Content(updated)
+                graph.library.refreshPlaylist(
+                    Playlist(updated.id, updated.title, updated.subtitle, updated.artworkUrl, updated.description, updated.tracks),
+                )
+            }.onFailure { graph.postWarning(it.message ?: getApplication<Application>().getString(R.string.msg_could_not_reorder_playlist)) }
+        }
+    }
+
+    /**
+     * Autoplay: once the queue is nearly out, ask YouTube Music what would come next after the last
+     * queued track and append it. Only the local player is refilled, because a Connect device owns
+     * its own queue and would fight us for it.
+     */
+    private val mutableAutoplayLoading = MutableStateFlow(false)
+    val autoplayLoading: StateFlow<Boolean> = mutableAutoplayLoading.asStateFlow()
+    private val mutableAutoplayError = MutableStateFlow("")
+    val autoplayError: StateFlow<String> = mutableAutoplayError.asStateFlow()
+
+    /** Seed of the request in flight, so a burst of queue updates cannot fan out into duplicates. */
+    private var autoplaySeedInFlight = ""
+
+    /** Seed that already came back with nothing usable; retrying it would fail the same way. */
+    private var autoplayExhaustedSeed = ""
+
+    /**
+     * Whether refills are allowed, tracked separately from the persisted setting because DataStore
+     * writes land asynchronously. Reading the setting here would let the refill observer see a
+     * stale `true` in the moment after switching off — emptying the queue and immediately refilling
+     * it from the same radio.
+     */
+    private val autoplayGate = MutableStateFlow(settings.value.autoplayEnabled)
+
+    private val mutableWarning = MutableStateFlow("")
+    val warning: StateFlow<String> = mutableWarning.asStateFlow()
+    private var warningDismissJob: Job? = null
+
+    private val mutableSleepTimerRemainingSeconds = MutableStateFlow(0L)
+    val sleepTimerRemainingSeconds: StateFlow<Long> = mutableSleepTimerRemainingSeconds.asStateFlow()
+    private val mutableSleepTimerEndOfTrack = MutableStateFlow(false)
+    val sleepTimerEndOfTrack: StateFlow<Boolean> = mutableSleepTimerEndOfTrack.asStateFlow()
+    private var sleepTimerJob: Job? = null
+    private var detailJob: Job? = null
+    private var detailLoadGeneration = 0
+
+    val updateState: StateFlow<dev.sfg.veyra.mobile.UpdateState> = graph.updates.state
+
+    private val mutableCacheSizeBytes = MutableStateFlow(0L)
+    val cacheSizeBytes: StateFlow<Long> = mutableCacheSizeBytes.asStateFlow()
+
+    private val mutableIsClearingCache = MutableStateFlow(false)
+    val isClearingCache: StateFlow<Boolean> = mutableIsClearingCache.asStateFlow()
+
+    fun checkForUpdates() = graph.updates.checkForUpdates()
+
+    fun installUpdate(metadata: dev.sfg.veyra.mobile.MobileUpdateMetadata) =
+        graph.updates.downloadAndInstallUpdate(metadata)
+
+    fun dismissUpdate() = graph.updates.dismiss()
+
+    init {
+        refreshHome()
+        refreshCacheSize()
+        observeNetworkState()
+        observeSearch()
+        observeRemoteDevice()
+        observeLocalDeviceName()
+        observeArtwork()
+        observeArtistCredits()
+        observeDetailArtwork()
+        observeLyrics()
+        observeAuthentication()
+        observeDiscordPresence()
+        observeWarnings()
+        observeLocalAudioVersion()
+        observeMusicVideo()
+        observeAutoplay()
+        observeConnectDeviceSync()
+    }
+
+    private fun observeNetworkState() {
+        viewModelScope.launch {
+            graph.networkMonitor.isOnline.collect { online ->
+                if (online && mutableHome.value is LoadState.Error) {
+                    refreshHome()
+                }
+            }
+        }
+    }
+
+    private fun observeMusicVideo() {
+        viewModelScope.launch {
+            combine(local.snapshot, targets) { snapshot, targetState ->
+                snapshot.currentTrack.takeIf { targetState.selected is PlaybackTarget.LocalPhone }
+            }
+                .distinctUntilChangedBy { track ->
+                    track?.let { Triple(it.id, it.musicVideoType, it.musicVideoId) }
+                }
+                .collectLatest { track ->
+                    if (track == null || track.isQobuz) {
+                        mutableMusicVideo.value = MusicVideoState()
+                        return@collectLatest
+                    }
+                    mutableMusicVideo.value = MusicVideoState(
+                        trackId = track.id,
+                        checking = true,
+                        playing = local.snapshot.value.playingVideo,
+                    )
+                    val videoId = graph.videoVersions.videoId(track).orEmpty()
+                    mutableMusicVideo.value = MusicVideoState(
+                        trackId = track.id,
+                        videoId = videoId,
+                        playing = local.snapshot.value.playingVideo,
+                    )
+                }
+        }
+        viewModelScope.launch {
+            combine(local.snapshot, targets) { snapshot, targetState ->
+                snapshot.playingVideo && targetState.selected is PlaybackTarget.LocalPhone
+            }.distinctUntilChanged().collect { playing ->
+                mutableMusicVideo.update { it.copy(playing = playing) }
+            }
+        }
+    }
+
+    fun refreshHome() {
+        viewModelScope.launch {
+            mutableHome.value = LoadState.Loading
+            mutableHome.value = runCatching { graph.catalog.home() }
+                .fold(
+                    onSuccess = {
+                        if (it.isEmpty()) LoadState.Empty(getApplication<Application>().getString(R.string.msg_no_recommendations))
+                        else LoadState.Content(it)
+                    },
+                    onFailure = {
+                        if (downloads.value.values.any { d -> d.status == dev.sfg.veyra.mobile.download.DownloadStatus.COMPLETED } || library.value.recentlyPlayed.isNotEmpty()) {
+                            LoadState.Error(getApplication<Application>().getString(R.string.msg_offline_downloads_available), true)
+                        } else LoadState.Error(it.message ?: getApplication<Application>().getString(R.string.msg_home_load_failed))
+                    },
+                )
+        }
+    }
+
+    fun updateQuery(value: String) {
+        searchQuery.value = value
+    }
+
+    fun runSearch(value: String = query.value) {
+        searchQuery.value = value.trim()
+        graph.settings.recordSearch(value)
+    }
+
+    fun clearSearchHistory() = graph.settings.clearSearchHistory()
+    fun removeSearchHistoryItem(query: String) = graph.settings.removeSearchHistoryItem(query)
+    fun selectLibraryFilter(filter: LibraryFilter) { mutableLibraryFilter.value = filter }
+
+    fun openDetail(id: String) = loadDetail(id, preserveContent = false)
+
+    fun refreshDetail() {
+        val id = (mutableDetail.value as? LoadState.Content)?.value?.id.orEmpty()
+        if (id.isNotBlank()) loadDetail(id, preserveContent = true)
+    }
+
+    private fun loadDetail(id: String, preserveContent: Boolean) {
+        val seed = findCatalogItem(id, home.value, search.value, library.value, detail.value)
+        // A collection now publishes several times as its pages land, so a load left running after
+        // the listener moved on would keep writing its pages over the collection they opened next.
+        detailJob?.cancel()
+        val generation = ++detailLoadGeneration
+        detailJob = viewModelScope.launch {
+            if (preserveContent) {
+                mutableDetailRefreshing.value = true
+            } else {
+                mutableDetailRefreshing.value = false
+                mutableDetail.value = LoadState.Loading
+            }
+
+            // When offline or if network is down, immediately synthesize from downloaded tracks
+            if (!graph.networkMonitor.checkIsOnline()) {
+                val offlineDetail = dev.sfg.veyra.mobile.download.OfflineDetailSynthesizer.synthesize(
+                    id = id,
+                    seed = seed,
+                    downloadedItems = downloads.value.values.toList(),
+                    library = library.value,
+                    context = getApplication(),
+                )
+                if (offlineDetail != null) {
+                    mutableDetail.value = LoadState.Content(offlineDetail)
+                    mutableDetailRefreshing.value = false
+                    return@launch
+                }
+            }
+
+            // Each page replaces the last, so the collection appears as soon as its first page
+            // lands and grows underneath the listener instead of holding a spinner until an
+            // endless mix exhausts its continuation budget.
+            try {
+                graph.catalog.browsePages(id).collect { page ->
+                    val resolved = page.withSeed(seed)
+                    mutableDetail.value = LoadState.Content(resolved)
+                    graph.library.cacheDetail(resolved)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                // Continuation failures are already absorbed by the repository, so reaching here
+                // means the first page never arrived and there is nothing on screen to keep.
+                val offline = dev.sfg.veyra.mobile.download.OfflineDetailSynthesizer.synthesize(
+                    id = id,
+                    seed = seed,
+                    downloadedItems = downloads.value.values.toList(),
+                    library = library.value,
+                    context = getApplication(),
+                )
+                mutableDetail.value = offline?.let { LoadState.Content(it) }
+                    ?: LoadState.Error(error.message ?: getApplication<Application>().getString(R.string.msg_collection_load_failed))
+            } finally {
+                if (detailLoadGeneration == generation) mutableDetailRefreshing.value = false
+            }
+        }
+    }
+
+    suspend fun fetchSectionItems(browseId: String, params: String = ""): List<CatalogItem> {
+        if (browseId.isBlank()) return emptyList()
+        return runCatching { graph.catalog.sectionItems(browseId, params) }.getOrDefault(emptyList())
+    }
+
+    /** The transition Smart Crossfade has planned out of the current track, for the scrubber. */
+    val transitionMarker = graph.transitionMarker
+
+    fun play(track: Track, contextTitle: String = "") {
+        Log.d(TAG, "play: track=${track.id} ('${track.title}'), contextTitle='$contextTitle'")
+        playAll(listOf(track), contextTitle = contextTitle)
+    }
+
+    fun playAll(
+        tracks: List<Track>,
+        startIndex: Int = 0,
+        contextTitle: String = "",
+        shuffle: Boolean = false,
+    ) {
+        Log.d(TAG, "playAll: ${tracks.size} tracks, startIndex=$startIndex, contextTitle='$contextTitle'")
+        if (tracks.isEmpty()) return
+        val safeIndex = startIndex.coerceIn(tracks.indices)
+        val source = contextTitle.takeIf { it.isMeaningfulPlaybackSource() }
+            ?: tracks[safeIndex].album.takeIf { it.isMeaningfulPlaybackSource() }
+            ?: getApplication<Application>().getString(R.string.playerx_your_queue)
+
+        viewModelScope.launch {
+            val start = graph.audioVersions.audioVersion(tracks[safeIndex])
+            Log.d(TAG, "playAll: starting playback with track ${start.id} ('${start.title}')")
+            val requested = tracks.toMutableList().apply { this[safeIndex] = start }
+            // Normalized here rather than only inside replaceQueue, because the audio-version
+            // lookups below address the queue by index. Letting the player dedupe on its own would
+            // shift every index past the first duplicate and aim each swap at the wrong track.
+            val edited = QueueEditor.replaceAndPlay(requested, safeIndex)
+            val queue = edited.tracks
+
+            when (targets.value.selected) {
+                PlaybackTarget.LocalPhone -> {
+                    local.replaceQueue(queue, edited.currentIndex, contextTitle = source)
+                    // After the queue lands, never before: the service remembers the order it
+                    // shuffles over, and enabling shuffle first would have it remember the queue
+                    // this one is replacing — leaving nothing to restore when shuffle goes off.
+                    if (shuffle) local.setShuffle(true)
+                }
+                is PlaybackTarget.Remote -> graph.connect.transfer(start)
+            }
+            graph.library.recordPlayed(start)
+
+            if (targets.value.selected is PlaybackTarget.LocalPhone) {
+                resolveRemainingAudioVersions(queue, edited.currentIndex)
+            }
+        }
+    }
+
+    /** Verifies queued versions in playback order without bursting one search per explicit row. */
+    private fun CoroutineScope.resolveRemainingAudioVersions(queue: List<Track>, startIndex: Int) {
+        val lookupOrder = (startIndex + 1 until queue.size) + (0 until startIndex)
+        launch {
+            lookupOrder.forEach { index ->
+                val track = queue[index]
+                if (!track.needsAudioVersionLookup()) return@forEach
+                val audio = graph.audioVersions.audioVersion(track)
+                if (audio.id != track.id) local.replaceQueued(index, track.id, audio)
+            }
+        }
+    }
+
+    /**
+     * Plays whatever a spoken request resolves to. A blank query is Assistant asking for music
+     * with no preference, which the user's own liked songs answer better than a search would.
+     */
+    fun playFromSearch(query: String) {
+        Log.d(TAG, "playFromSearch: '$query'")
+        viewModelScope.launch {
+            val tracks = if (query.isBlank()) {
+                graph.library.library.value.likedTracks.let(QueueEditor::shuffle)
+            } else {
+                runCatching { graph.catalog.search(query).tracks }.getOrDefault(emptyList())
+            }
+            if (tracks.isEmpty()) {
+                showWarning(
+                    if (query.isBlank()) getApplication<Application>().getString(R.string.msg_nothing_to_play)
+                    else getApplication<Application>().getString(R.string.msg_nothing_found_for, query),
+                )
+                return@launch
+            }
+            playAll(tracks, contextTitle = query)
+        }
+    }
+
+    /**
+     * Plays a collection shuffled. The queue goes in unshuffled and the service shuffles what
+     * follows the randomly chosen opener, so the collection's own order is what shuffle is
+     * remembered as being turned on over and switching it off restores the album or playlist.
+     */
+    fun shuffleAll(tracks: List<Track>, contextTitle: String = "") {
+        val playable = tracks.distinctBy(Track::id).filter { it.id.isNotBlank() }
+        if (playable.isEmpty()) return
+        playAll(
+            playable,
+            startIndex = kotlin.random.Random.Default.nextInt(playable.size),
+            contextTitle = contextTitle,
+            shuffle = true,
+        )
+    }
+
+    private fun analyzeBestMixTrack(track: Track, file: File): TrackFeatures.Features? = try {
+        BestMixSorter.analyzeLocalTrack(track, file)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        // Native decoders can reject an individual container with LinkageError or another Error,
+        // not only Exception. One unanalysable song should remain in its original relative order;
+        // it must not cancel the other workers or prevent the collection from playing.
+        Log.w(TAG, "Best Mix analysis failed for ${track.id}", error)
+        null
+    }
+
+    private suspend fun loadBestMixFeatures(tracks: Collection<Track>): Map<String, TrackFeatures.Features> =
+        withContext(Dispatchers.IO) {
+            graph.bestMixFeatures.load(tracks.map(Track::id))
+        }
+
+    private suspend fun persistBestMixFeatures(features: Map<String, TrackFeatures.Features>) {
+        if (features.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            graph.bestMixFeatures.putAll(features)
+        }
+    }
+
+    /**
+     * Orders [tracks] via Best Mix algorithm and starts playback.
+     * If cloud sync is enabled, attempts to fetch features from Supabase first.
+     * Otherwise, ensures undownloaded tracks are downloaded, then extracts audio features
+     * locally via native AudioDecoder & TrackFeatures before sorting.
+     */
+    fun playBestMix(
+        tracks: List<Track>,
+        title: String,
+        onProgress: (String) -> Unit = {},
+        onComplete: () -> Unit = {},
+    ) = viewModelScope.launch {
+        val playable = tracks.filter { it.id.isNotBlank() }.distinctBy(Track::id)
+        val bestMixTitle = title.takeIf { it.isNotBlank() }
+            ?.let { getApplication<Application>().getString(R.string.msg_best_mix_title_format, it) }
+            ?: getApplication<Application>().getString(R.string.msg_best_mix_label)
+        try {
+            if (playable.isEmpty()) return@launch
+
+            val currentSettings = settings.value
+            val syncService = SupabaseSyncService(getApplication())
+            val featuresMap = mutableMapOf<String, TrackFeatures.Features>()
+
+            // 1. Reuse process-memory or versioned SQLite analysis first.
+            featuresMap.putAll(loadBestMixFeatures(playable))
+            Log.d(TAG, "Best Mix reused ${featuresMap.size}/${playable.size} persisted analyses")
+
+            // 2. Fetch from Supabase if enabled and tracks are missing
+            if (currentSettings.bestMixSupabaseSync && featuresMap.size < playable.size) {
+                val neededIds = playable.map { it.id }.filter { it !in featuresMap }
+                onProgress(getApplication<Application>().getString(R.string.msg_checking_cloud_analysis))
+                val cloudFeatures = withContext(Dispatchers.IO) {
+                    syncService.fetchTrackFeatures(neededIds)
+                }
+                cloudFeatures.forEach { (id, features) ->
+                    featuresMap[id] = features
+                }
+                persistBestMixFeatures(cloudFeatures)
+            }
+
+            // 3. For remaining tracks missing features, analyze downloaded files in parallel
+            val missingTracks = playable.filter { it.id !in featuresMap }
+            if (missingTracks.isNotEmpty()) {
+                val undownloaded = missingTracks.filter { graph.downloads.getDownloadedFile(it.id) == null }
+
+                if (undownloaded.isNotEmpty()) {
+                    onProgress(getApplication<Application>().getString(R.string.msg_downloading_tracks_format, 0, undownloaded.size))
+                    graph.downloads.downloadTracks(undownloaded)
+                    val targetIds = undownloaded.mapTo(mutableSetOf(), Track::id)
+                    // Wait for downloads to complete or fail, but do not hold playback forever.
+                    val startTime = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startTime < 90_000L) {
+                        val currentDownloads = graph.downloads.downloads.value
+                        val finishedCount = targetIds.count { id ->
+                            graph.downloads.getDownloadedFile(id) != null ||
+                                currentDownloads[id]?.status == dev.sfg.veyra.mobile.download.DownloadStatus.FAILED
+                        }
+                        onProgress(getApplication<Application>().getString(R.string.msg_downloading_tracks_format, finishedCount, targetIds.size))
+                        if (finishedCount >= targetIds.size) break
+                        delay(500)
+                    }
+                }
+
+                // Count only real files. Failed or timed-out downloads used to be reported as
+                // analyzed even though the worker skipped them, which made the progress numbers
+                // look like an unrelated second batch.
+                val filesToAnalyze = missingTracks.mapNotNull { track ->
+                    graph.downloads.getDownloadedFile(track.id)?.let { track to it }
+                }
+                val totalToAnalyze = filesToAnalyze.size
+                if (totalToAnalyze > 0) {
+                    val completedCount = AtomicInteger(0)
+                    val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+                    val semaphore = Semaphore(parallelism)
+                    val analyzedFeatures = ConcurrentHashMap<String, TrackFeatures.Features>()
+
+                    onProgress(getApplication<Application>().getString(R.string.msg_analyzing_audio_format, 0, totalToAnalyze))
+                    coroutineScope {
+                        filesToAnalyze.map { (track, file) ->
+                            async(Dispatchers.Default) {
+                                semaphore.withPermit {
+                                    analyzeBestMixTrack(track, file)?.let { localFeatures ->
+                                        analyzedFeatures[track.id] = localFeatures
+                                    }
+                                    val done = completedCount.incrementAndGet()
+                                    onProgress(getApplication<Application>().getString(R.string.msg_analyzing_audio_format, done, totalToAnalyze))
+                                }
+                            }
+                        }.awaitAll()
+                    }
+                    featuresMap.putAll(analyzedFeatures)
+                    persistBestMixFeatures(analyzedFeatures)
+                }
+            }
+
+            onProgress(getApplication<Application>().getString(R.string.hero_sorting_best_mix))
+            val sortStarted = System.currentTimeMillis()
+            val sorted = withContext(Dispatchers.Default) {
+                BestMixSorter.sort(playable, featuresMap)
+            }
+            Log.d(
+                TAG,
+                "Best Mix sorted ${playable.size} tracks with ${featuresMap.size} analyses " +
+                    "in ${System.currentTimeMillis() - sortStarted}ms",
+            )
+            playAll(sorted, contextTitle = bestMixTitle)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            // Best Mix is an enhancement to playback, not a prerequisite. A bad codec/native
+            // analysis result must never turn the collection's play button into a no-op.
+            Log.w(TAG, "Best Mix preparation failed; playing the original order", error)
+            if (playable.isNotEmpty()) {
+                playAll(playable, contextTitle = bestMixTitle)
+                showWarning(getApplication<Application>().getString(R.string.msg_best_mix_analysis_incomplete))
+            }
+        } finally {
+            onComplete()
+        }
+    }
+
+    /**
+     * Orders only the upcoming tracks by their Smart Crossfade transition quality without
+     * interrupting current playback.
+     */
+    fun bestMixUpcoming(
+        onProgress: (String) -> Unit = {},
+        onComplete: () -> Unit = {},
+    ) = viewModelScope.launch {
+        try {
+            val currentSnapshot = playback.value
+            val upcoming = currentSnapshot.upcoming
+            if (upcoming.size <= 1) return@launch
+            val queueRequest = BestMixQueueRequest.capture(currentSnapshot)
+            val currentSettings = settings.value
+            val syncService = SupabaseSyncService(getApplication())
+            val featuresMap = mutableMapOf<String, TrackFeatures.Features>()
+            val currentTrack = currentSnapshot.currentTrack
+            val analysisTracks = (listOfNotNull(currentTrack) + upcoming).distinctBy(Track::id)
+
+            // 1. Reuse process-memory or versioned SQLite analysis.
+            featuresMap.putAll(loadBestMixFeatures(analysisTracks))
+            Log.d(TAG, "Queue Best Mix reused ${featuresMap.size}/${analysisTracks.size} persisted analyses")
+
+            // 2. Fetch from Supabase if enabled
+            if (currentSettings.bestMixSupabaseSync && featuresMap.size < analysisTracks.size) {
+                val neededIds = analysisTracks.map { it.id }.filter { it !in featuresMap }
+                onProgress(getApplication<Application>().getString(R.string.msg_checking_cloud_analysis))
+                val cloudFeatures = withContext(Dispatchers.IO) { syncService.fetchTrackFeatures(neededIds) }
+                cloudFeatures.forEach { (id, features) ->
+                    featuresMap[id] = features
+                }
+                persistBestMixFeatures(cloudFeatures)
+            }
+
+            // 3. Make missing tracks locally analyzable. Previously this action only inspected
+            // files that happened to be downloaded already, then silently returned the original
+            // queue when there was no evidence to sort on.
+            val missing = analysisTracks.filter { it.id !in featuresMap }
+            val undownloaded = missing.filter { graph.downloads.getDownloadedFile(it.id) == null }
+            if (undownloaded.isNotEmpty()) {
+                onProgress(getApplication<Application>().getString(R.string.msg_downloading_tracks_format, 0, undownloaded.size))
+                graph.downloads.downloadTracks(undownloaded)
+                val targetIds = undownloaded.mapTo(mutableSetOf(), Track::id)
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < BEST_MIX_DOWNLOAD_TIMEOUT_MS) {
+                    val currentDownloads = graph.downloads.downloads.value
+                    val finished = targetIds.count { id ->
+                        graph.downloads.getDownloadedFile(id) != null ||
+                            currentDownloads[id]?.status == dev.sfg.veyra.mobile.download.DownloadStatus.FAILED
+                    }
+                    onProgress(getApplication<Application>().getString(R.string.msg_downloading_tracks_format, finished, targetIds.size))
+                    if (finished >= targetIds.size) break
+                    delay(500)
+                }
+            }
+
+            val filesToAnalyze = missing.mapNotNull { track ->
+                graph.downloads.getDownloadedFile(track.id)?.let { track to it }
+            }
+            if (filesToAnalyze.isNotEmpty()) {
+                val totalToAnalyze = filesToAnalyze.size
+                val completedCount = AtomicInteger(0)
+                val parallelism = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+                val semaphore = Semaphore(parallelism)
+                val analyzedFeatures = ConcurrentHashMap<String, TrackFeatures.Features>()
+
+                onProgress(getApplication<Application>().getString(R.string.msg_analyzing_audio_format, 0, totalToAnalyze))
+                coroutineScope {
+                    filesToAnalyze.map { (track, file) ->
+                        async(Dispatchers.Default) {
+                            semaphore.withPermit {
+                                analyzeBestMixTrack(track, file)?.let { localFeatures ->
+                                    analyzedFeatures[track.id] = localFeatures
+                                }
+                                val done = completedCount.incrementAndGet()
+                                onProgress(getApplication<Application>().getString(R.string.msg_analyzing_audio_format, done, totalToAnalyze))
+                            }
+                        }
+                    }.awaitAll()
+                }
+                featuresMap.putAll(analyzedFeatures)
+                persistBestMixFeatures(analyzedFeatures)
+            }
+
+            onProgress(getApplication<Application>().getString(R.string.msg_sorting_queue))
+            val sortStarted = System.currentTimeMillis()
+            val sortedUpcoming = withContext(Dispatchers.Default) {
+                BestMixSorter.sort(
+                    tracks = upcoming,
+                    featuresMap = featuresMap,
+                    initialFeatures = currentTrack?.id?.let(featuresMap::get),
+                )
+            }
+            Log.d(
+                TAG,
+                "Queue Best Mix sorted ${upcoming.size} tracks with ${featuresMap.size} analyses " +
+                    "in ${System.currentTimeMillis() - sortStarted}ms",
+            )
+            val reconciled = queueRequest.reconcile(playback.value, sortedUpcoming) ?: return@launch
+            val baseTitle = currentSnapshot.contextTitle.ifBlank { currentTrack?.album.orEmpty() }
+            val bestMixLabel = getApplication<Application>().getString(R.string.msg_best_mix_label)
+            val newTitle = if (baseTitle.isNotBlank() && !baseTitle.endsWith("• $bestMixLabel", ignoreCase = true)) {
+                getApplication<Application>().getString(R.string.msg_best_mix_title_format, baseTitle)
+            } else if (baseTitle.isNotBlank()) {
+                baseTitle
+            } else {
+                bestMixLabel
+            }
+            local.replaceUpcoming(reconciled, contextTitle = newTitle)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            Log.w(TAG, "Could not prepare Best Mix for the upcoming queue", error)
+            showWarning(getApplication<Application>().getString(R.string.msg_best_mix_prepare_failed))
+        } finally {
+            onComplete()
+        }
+    }
+
+    /**
+     * Plays all tracks from a collection (playlist, album, artist, or mix) given its id.
+     */
+    fun playCollection(id: String, contextTitle: String = "", shuffle: Boolean = false) {
+        Log.d(TAG, "playCollection: id='$id', contextTitle='$contextTitle', shuffle=$shuffle")
+        viewModelScope.launch {
+            val detail = runCatching { graph.catalog.browse(id) }.getOrNull()
+            val tracks = detail?.tracks.orEmpty().filter { it.id.isNotBlank() }
+            if (tracks.isNotEmpty()) {
+                playAll(
+                    tracks = tracks,
+                    startIndex = if (shuffle) kotlin.random.Random.Default.nextInt(tracks.size) else 0,
+                    contextTitle = contextTitle.ifBlank { detail?.title.orEmpty() },
+                    shuffle = shuffle,
+                )
+            } else {
+                showWarning(getApplication<Application>().getString(R.string.msg_no_playable_tracks))
+            }
+        }
+    }
+
+    fun playItem(item: CatalogItem, shuffle: Boolean = false) {
+        when (item) {
+            is CatalogItem.Song -> play(item.track, contextTitle = item.track.title)
+            is CatalogItem.Collection -> playCollection(item.playlist.id, contextTitle = item.title, shuffle = shuffle)
+            is CatalogItem.Record -> playCollection(item.album.id, contextTitle = item.title, shuffle = shuffle)
+            is CatalogItem.Performer -> playCollection(item.artist.id, contextTitle = item.title, shuffle = shuffle)
+            is CatalogItem.Category -> openDetail(item.stableId)
+        }
+    }
+
+    fun saveDetail(detail: BrowseDetail) {
+        when (detail.kind) {
+            // `subtitle` is the whole browse line — "Album • 2017" — so putting it in the
+            // artist field rendered as "Album • 2017 • 2017" once the year was appended again.
+            CatalogKind.ALBUM -> graph.library.saveAlbum(
+                Album(
+                    id = detail.id,
+                    title = detail.title,
+                    artist = detail.artist.ifBlank { detail.tracks.firstOrNull()?.artist.orEmpty() },
+                    artworkUrl = detail.artworkUrl,
+                    year = detail.year,
+                    tracks = detail.tracks,
+                    explicit = detail.explicit,
+                ),
+            )
+            CatalogKind.ARTIST -> setArtistSubscription(detail)
+            CatalogKind.PLAYLIST -> graph.library.savePlaylist(
+                Playlist(detail.id, detail.title, detail.subtitle, detail.artworkUrl, detail.description, detail.tracks),
+            )
+            CatalogKind.TRACK -> Unit
+        }
+    }
+
+    private fun setArtistSubscription(detail: BrowseDetail) {
+        if (auth.value !is AuthState.SignedIn) {
+            showWarning(getApplication<Application>().getString(R.string.msg_sign_in_follow_artists))
+            return
+        }
+        val artist = Artist(detail.id, detail.title, detail.artworkUrl, detail.subtitle)
+        val wasSubscribed = library.value.savedArtists.any { it.id == artist.id }
+        val subscribe = !wasSubscribed
+        graph.library.setArtistSaved(artist, subscribe)
+        viewModelScope.launch {
+            runCatching { graph.catalog.setArtistSubscription(artist.id, subscribe) }
+                .onFailure { error ->
+                    graph.library.setArtistSaved(artist, wasSubscribed)
+                    showWarning(
+                        error.message ?: if (subscribe) getApplication<Application>().getString(R.string.msg_could_not_follow_artist)
+                        else getApplication<Application>().getString(R.string.msg_could_not_unfollow_artist),
+                    )
+                }
+        }
+    }
+
+    fun playNext(track: Track) {
+        remoteOrLocal(
+            { if (connectProtocolVersion.value >= 2) graph.connect.playNext(track) },
+            { viewModelScope.launch { local.playNext(graph.audioVersions.audioVersion(track)) } },
+        )
+    }
+
+    fun addToQueue(track: Track) {
+        remoteOrLocal(
+            { if (connectProtocolVersion.value >= 2) graph.connect.addToQueue(track) },
+            { viewModelScope.launch { local.addToQueue(graph.audioVersions.audioVersion(track)) } },
+        )
+    }
+
+    fun togglePlayback() = partyOrLocal(
+        if (playback.value.isPlaying) "pause" else "play",
+        { graph.connect.send(ConnectCommand.TogglePlayback) },
+        local::toggle,
+    )
+
+    fun toggleMusicVideo() {
+        if (targets.value.selected !is PlaybackTarget.LocalPhone) {
+            showWarning(getApplication<Application>().getString(R.string.msg_music_video_local_only))
+            return
+        }
+        val state = musicVideo.value
+        val currentId = local.snapshot.value.currentTrack?.id
+        if (state.trackId != currentId) return
+        when {
+            state.playing -> local.setVideoMode(null)
+            state.videoId.isNotBlank() -> local.setVideoMode(state.videoId)
+            state.checking -> Unit
+            else -> showWarning(getApplication<Application>().getString(R.string.msg_no_music_video))
+        }
+    }
+    fun startSleepTimer(minutes: Int) {
+        if (minutes <= 0) return
+        cancelSleepTimer()
+        val deadline = System.currentTimeMillis() + minutes * 60_000L
+        mutableSleepTimerRemainingSeconds.value = minutes * 60L
+        sleepTimerJob = viewModelScope.launch {
+            while (true) {
+                val remaining = ((deadline - System.currentTimeMillis() + 999L) / 1_000L).coerceAtLeast(0L)
+                mutableSleepTimerRemainingSeconds.value = remaining
+                if (remaining == 0L) break
+                delay(1_000L)
+            }
+            pauseForSleepTimer()
+            clearSleepTimerState()
+        }
+    }
+
+    fun startSleepTimerAtEndOfTrack() {
+        val trackId = playback.value.currentTrack?.id ?: return
+        cancelSleepTimer()
+        mutableSleepTimerEndOfTrack.value = true
+        sleepTimerJob = viewModelScope.launch {
+            playback.map { it.currentTrack?.id }
+                .dropWhile { it == trackId }
+                .first()
+            pauseForSleepTimer()
+            clearSleepTimerState()
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        clearSleepTimerState()
+    }
+
+    private fun clearSleepTimerState() {
+        mutableSleepTimerRemainingSeconds.value = 0L
+        mutableSleepTimerEndOfTrack.value = false
+    }
+
+    private fun pauseForSleepTimer() {
+        if (!playback.value.isPlaying) return
+        remoteOrLocal({ graph.connect.send(ConnectCommand.TogglePlayback) }, local::pause)
+    }
+
+    fun next() = partyOrLocal("next", { graph.connect.send(ConnectCommand.Next) }, local::next)
+    fun previous() = partyOrLocal("previous", { graph.connect.send(ConnectCommand.Previous) }, local::previous)
+    fun seek(positionMs: Long) {
+        if (party.requestSeek(positionMs)) return
+        remoteOrLocal(
+            { graph.connect.send(ConnectCommand.Seek(positionMs / 1_000.0)) },
+            { local.seek(positionMs) },
+        )
+    }
+    fun toggleShuffle() = partyOrLocal(
+        "toggle-shuffle",
+        { if (connectProtocolVersion.value >= 2) graph.connect.toggleShuffle() },
+        {
+            // The service reshuffles the upcoming items itself when the flag turns on, so doing it
+            // here too would rewrite the queue twice for one toggle.
+            local.setShuffle(!playback.value.shuffle)
+        },
+    )
+    fun cycleRepeat() = remoteOrLocal(
+        { if (connectProtocolVersion.value >= 2) graph.connect.cycleRepeat() },
+        local::cycleRepeat,
+    )
+    fun playQueueIndex(index: Int) = remoteOrLocal(
+        { graph.connect.send(ConnectCommand.PlayQueueIndex(index)) },
+        { local.playQueueIndex(index) },
+    )
+    fun removeQueueIndex(index: Int) = remoteOrLocal(
+        { graph.connect.send(ConnectCommand.RemoveQueueIndex(index)) },
+        { local.remove(index) },
+    )
+    fun moveQueueItem(from: Int, to: Int) = remoteOrLocal(
+        { if (connectProtocolVersion.value >= 2) graph.connect.moveQueueIndex(from, to) },
+        { local.move(from, to) },
+    )
+    fun clearUpcoming() = remoteOrLocal(
+        { if (connectProtocolVersion.value >= 2) graph.connect.clearUpcoming() },
+        local::clearUpcoming,
+    )
+    fun clearQueue() = partyOrLocal(
+        "clear-queue",
+        { if (connectProtocolVersion.value >= 2) graph.connect.clearUpcoming() },
+        local::clearQueue,
+    )
+
+    fun setAutoplayEnabled(enabled: Boolean) {
+        autoplayGate.value = enabled
+        graph.settings.updateSettings(settings.value.copy(autoplayEnabled = enabled))
+        if (enabled) return
+        // Turning it off should undo what it added, not leave the queue full of unasked-for music.
+        mutableAutoplayError.value = ""
+        autoplayExhaustedSeed = ""
+        if (targets.value.selected !is PlaybackTarget.LocalPhone) return
+        val upcoming = playback.value.upcoming
+        val kept = upcoming.filterNot(Track::autoplayGenerated)
+        if (kept.size != upcoming.size) local.replaceUpcoming(kept)
+    }
+
+    private data class AutoplayTrigger(
+        val seedId: String,
+        val remaining: Int,
+        val enabled: Boolean,
+        val isLocal: Boolean,
+    )
+
+    private fun observeAutoplay() {
+        // Persisted changes from anywhere else (the Settings screen, the first DataStore read)
+        // still have to reach the gate.
+        viewModelScope.launch {
+            settings.map { it.autoplayEnabled }
+                .distinctUntilChanged()
+                .collect { autoplayGate.value = it }
+        }
+        viewModelScope.launch {
+            combine(playback, autoplayGate, targets) { snapshot, enabled, target ->
+                val upcoming = snapshot.upcoming
+                AutoplayTrigger(
+                    // The tail of the queue is the seed: recommendations should follow the music the
+                    // listener will actually reach, not the track playing several songs earlier.
+                    seedId = upcoming.lastOrNull()?.id.orEmpty().ifBlank { snapshot.currentTrack?.id.orEmpty() },
+                    remaining = upcoming.size,
+                    enabled = enabled,
+                    isLocal = target.selected is PlaybackTarget.LocalPhone,
+                )
+            }
+                // Playback ticks every second; without this the refill check would run with it.
+                .distinctUntilChanged()
+                .collect(::refillAutoplay)
+        }
+    }
+
+    private fun observeConnectDeviceSync() {
+        viewModelScope.launch {
+            combine(
+                local.snapshot,
+                graph.connect.status,
+                settings.map { it.autoplayEnabled }.distinctUntilChanged(),
+            ) { snapshot, status, autoplay -> Triple(snapshot, status, autoplay) }
+                .collect { (snapshot, status, autoplay) ->
+                    if (status == dev.sfg.veyra.connect.protocol.ConnectClientStatus.APPROVED) {
+                        graph.connect.sendDeviceState(snapshot, autoplay)
+                    }
+                }
+        }
+        viewModelScope.launch {
+            graph.connect.remoteCommands.collect { command ->
+                handleRemoteCommand(command)
+            }
+        }
+    }
+
+    private fun handleRemoteCommand(command: ConnectCommand) {
+        if (targets.value.selected !is PlaybackTarget.LocalPhone) {
+            targetCoordinator.completeTransfer(PlaybackTarget.LocalPhone)
+            mutableTargets.value = targetCoordinator.state
+        }
+        fun upcomingIndex(index: Int): Int = local.snapshot.value.currentIndex.coerceAtLeast(-1) + 1 + index
+        when (command) {
+            ConnectCommand.TogglePlayback -> local.toggle()
+            ConnectCommand.Play -> local.play()
+            ConnectCommand.Pause -> local.pause()
+            ConnectCommand.Next -> local.next()
+            ConnectCommand.Previous -> local.previous()
+            is ConnectCommand.Seek -> local.seek((command.seconds * 1000).toLong())
+            is ConnectCommand.Volume -> local.setVolume(command.value.toFloat())
+            ConnectCommand.ToggleShuffle -> local.setShuffle(!local.snapshot.value.shuffle)
+            ConnectCommand.CycleRepeat -> local.cycleRepeat()
+            is ConnectCommand.PlayQueueIndex -> local.playQueueIndex(upcomingIndex(command.index))
+            is ConnectCommand.RemoveQueueIndex -> local.remove(upcomingIndex(command.index))
+            is ConnectCommand.MoveQueueIndex -> local.move(upcomingIndex(command.from), upcomingIndex(command.to))
+            ConnectCommand.ClearUpcoming -> local.clearUpcoming()
+            is ConnectCommand.PlayNext -> {
+                val track = jsonPayloadToTrack(command.track)
+                if (track.id.isNotBlank()) viewModelScope.launch { local.playNext(graph.audioVersions.audioVersion(track)) }
+            }
+            is ConnectCommand.AddToQueue -> {
+                val track = jsonPayloadToTrack(command.track)
+                if (track.id.isNotBlank()) viewModelScope.launch { local.addToQueue(graph.audioVersions.audioVersion(track)) }
+            }
+            is ConnectCommand.PlayTrack -> {
+                val track = jsonPayloadToTrack(command.item.playbackPayload)
+                if (track.id.isNotBlank()) viewModelScope.launch {
+                    local.replaceQueue(listOf(graph.audioVersions.audioVersion(track)), play = true, contextTitle = getApplication<Application>().getString(R.string.msg_desktop))
+                }
+            }
+            is ConnectCommand.PlayTrackPayload -> {
+                val track = jsonPayloadToTrack(command.payload)
+                if (track.id.isNotBlank()) viewModelScope.launch {
+                    local.replaceQueue(listOf(graph.audioVersions.audioVersion(track)), play = true, contextTitle = getApplication<Application>().getString(R.string.msg_desktop))
+                }
+            }
+            is ConnectCommand.Transfer -> {
+                val track = command.track?.let(::jsonPayloadToTrack)
+                val queue = command.queue.map(::jsonPayloadToTrack).filter { it.id.isNotBlank() }
+                val plan = desktopTransferPlan(track, queue, command.repeatMode)
+                if (plan.tracks.isNotEmpty()) {
+                    val posMs = (command.positionSeconds * 1000).toLong()
+                    local.replaceQueue(plan.tracks, plan.startIndex, posMs, play = command.play, contextTitle = getApplication<Application>().getString(R.string.msg_desktop_transfer))
+                    local.setShuffle(command.shuffle)
+                    local.setRepeatMode(plan.repeatMode)
+                    setAutoplayEnabled(command.autoplay)
+                }
+            }
+            is ConnectCommand.ReplaceQueue -> {
+                val tracks = command.tracks.map(::jsonPayloadToTrack).filter { it.id.isNotBlank() }
+                if (tracks.isNotEmpty()) {
+                    val posMs = (command.positionSeconds * 1000).toLong()
+                        local.replaceQueue(tracks, command.startIndex, posMs, play = command.play, contextTitle = command.contextTitle.ifBlank { getApplication<Application>().getString(R.string.msg_desktop_queue) })
+                }
+            }
+            is ConnectCommand.Unknown -> Unit
+            else -> Unit
+        }
+    }
+
+    private fun jsonPayloadToTrack(json: org.json.JSONObject): Track {
+        val playbackItem = json.optJSONObject("playbackItem") ?: json
+        return Track(
+            id = playbackItem.optString("id").ifBlank { json.optString("id") },
+            title = playbackItem.optString("title").ifBlank { json.optString("title") },
+            artist = playbackItem.optString("artist", playbackItem.optString("subtitle")).ifBlank { json.optString("artist", json.optString("subtitle")) },
+            album = playbackItem.optString("album").ifBlank { json.optString("album") },
+            artworkUrl = playbackItem.optString("artwork", playbackItem.optString("thumbnail")).ifBlank { json.optString("artwork", json.optString("thumbnail")) },
+            animatedArtworkUrl = playbackItem.optString("animatedArtwork").ifBlank { json.optString("animatedArtwork") },
+            animatedArtworkVerticalUrl = playbackItem.optString("animatedArtworkVertical").ifBlank { json.optString("animatedArtworkVertical") },
+            durationMs = (playbackItem.optDouble("durationSeconds", playbackItem.optDouble("duration", json.optDouble("durationSeconds", json.optDouble("duration", 0.0)))) * 1000).toLong()
+        )
+    }
+
+    private fun refillAutoplay(trigger: AutoplayTrigger) {
+        if (!trigger.enabled || !trigger.isLocal) return
+        if (trigger.remaining > AUTOPLAY_REFILL_THRESHOLD) return
+        if (trigger.seedId.isBlank() || !isOnline.value) return
+        if (trigger.seedId == autoplaySeedInFlight || trigger.seedId == autoplayExhaustedSeed) return
+
+        autoplaySeedInFlight = trigger.seedId
+        mutableAutoplayLoading.value = true
+        mutableAutoplayError.value = ""
+        viewModelScope.launch {
+            runCatching { graph.catalog.upNext(trigger.seedId) }
+                .onSuccess { candidates -> appendAutoplayTracks(trigger.seedId, candidates) }
+                .onFailure { mutableAutoplayError.value = it.message ?: getApplication<Application>().getString(R.string.msg_autoplay_load_failed) }
+            mutableAutoplayLoading.value = false
+            autoplaySeedInFlight = ""
+        }
+    }
+
+    private fun appendAutoplayTracks(seedId: String, candidates: List<Track>) {
+        // Filtered against the queue as it stands rather than against the trigger, because the
+        // listener may have queued something, or skipped, while the request was in the air. The
+        // append itself filters again on the player's own state, which is the authoritative one;
+        // this pass only decides whether the seed is worth reporting as exhausted.
+        val snapshot = playback.value
+        val known = snapshot.queue + listOfNotNull(snapshot.currentTrack)
+        val additions = AutoplayRecommendations
+            .select(known, candidates, AUTOPLAY_QUEUE_LIMIT)
+            .map { it.copy(autoplayGenerated = true) }
+        if (additions.isEmpty()) {
+            autoplayExhaustedSeed = seedId
+            mutableAutoplayError.value = getApplication<Application>().getString(R.string.msg_no_more_recommendations)
+            return
+        }
+        // Appended, never written back as a whole tail: the tail in this snapshot is already stale.
+        local.appendUpcoming(additions, AUTOPLAY_TOTAL_LIMIT)
+    }
+
+    fun setRemoteVolume(volume: Float) = graph.connect.setVolume(volume)
+    fun setAudioEnginePreset(preset: String) = graph.connect.setAudioEnginePreset(preset)
+    fun toggleAutoEq(enabled: Boolean) = graph.connect.toggleAutoEq(enabled)
+    fun toggleManualEq(enabled: Boolean) = graph.connect.toggleManualEq(enabled)
+
+    fun selectTarget(target: PlaybackTarget) {
+        if (target is PlaybackTarget.Remote) {
+            graph.connect.connectTo(target.deviceId)
+        }
+        if (target == targets.value.selected || !targetCoordinator.beginTransfer(target)) {
+            mutableTargets.value = targetCoordinator.state
+            return
+        }
+        mutableTargets.value = targetCoordinator.state
+        viewModelScope.launch {
+            when (target) {
+                PlaybackTarget.LocalPhone -> transferToPhone()
+                is PlaybackTarget.Remote -> transferToRemote(target)
+            }
+        }
+    }
+
+    fun pairDevice(input: String) = graph.connect.pair(input)
+    fun disconnectDevice(deviceId: String? = null) {
+        if (deviceId != null) {
+            graph.connect.removeDevice(deviceId)
+        } else {
+            graph.connect.disconnect()
+        }
+    }
+
+    fun renameDevice(device: PlaybackDevice, newName: String) {
+        if (device.isLocal) {
+            val trimmed = newName.trim()
+            val updated = settings.value.copy(customDeviceName = trimmed)
+            graph.settings.updateSettings(updated)
+            val base = Build.MODEL.takeIf(String::isNotBlank) ?: getApplication<Application>().selfDeviceLabel()
+            val effective = trimmed.ifBlank { base }
+            targetCoordinator.updateLocalDeviceName(name = effective, customName = trimmed)
+            mutableTargets.value = targetCoordinator.state
+            party.updateDisplayName(effective)
+        } else {
+            graph.connect.renameDevice(device.id, newName.trim())
+        }
+    }
+
+    fun removeDevice(deviceId: String) = graph.connect.removeDevice(deviceId)
+    fun toggleLiked(track: Track) {
+        val liked = graph.library.library.value.likedTracks.none { it.id == track.id }
+        graph.library.setLiked(track, liked)
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { graph.playlistActions.setLiked(track.id, liked) } }
+                .onFailure {
+                    graph.library.setLiked(track, !liked)
+                    graph.postWarning(it.message ?: getApplication<Application>().getString(R.string.msg_could_not_update_liked))
+                }
+        }
+    }
+    fun updateSettings(value: OrchardSettings) = graph.settings.updateSettings(value)
+
+    fun refreshCacheSize() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val size = CacheManager.calculateCacheSizeBytes(getApplication())
+            mutableCacheSizeBytes.value = size
+        }
+    }
+
+    fun clearCache(onComplete: ((Long) -> Unit)? = null) {
+        if (mutableIsClearingCache.value) return
+        viewModelScope.launch {
+            mutableIsClearingCache.value = true
+            val bytesCleared = withContext(Dispatchers.IO) {
+                CacheManager.clearAllCache(getApplication(), graph)
+            }
+            mutableCacheSizeBytes.value = withContext(Dispatchers.IO) {
+                CacheManager.calculateCacheSizeBytes(getApplication())
+            }
+            mutableIsClearingCache.value = false
+            onComplete?.invoke(bytesCleared)
+        }
+    }
+
+    fun beginSignIn() = graph.auth.beginSignIn()
+    fun completeSignIn(cookie: String, visitorData: String, dataSyncId: String) = graph.auth.completeSignIn(cookie, visitorData, dataSyncId)
+    fun cancelSignIn() = graph.auth.cancelSignIn()
+    fun signOut() = graph.auth.signOut()
+
+    fun shareTrack(track: Track, albumContext: String? = null, artistContext: String? = null) =
+        songLinksCoordinator.shareTrack(track, albumContext, artistContext)
+    fun shareCollection(detail: BrowseDetail) = songLinksCoordinator.shareCollection(detail)
+    fun dismissShare() = songLinksCoordinator.dismissShare()
+
+    /** Post a warning that auto-dismisses after [durationMs]. */
+    fun showWarning(message: String, durationMs: Long = 8_000L) {
+        mutableWarning.value = message
+        warningDismissJob?.cancel()
+        warningDismissJob = viewModelScope.launch {
+            delay(durationMs)
+            mutableWarning.value = ""
+        }
+    }
+
+    fun dismissWarning() {
+        warningDismissJob?.cancel()
+        mutableWarning.value = ""
+    }
+
+    fun handleIncomingLink(rawUrl: String, onNavigateDetail: (String) -> Unit = {}) {
+        viewModelScope.launch {
+            when (val resolution = songLinksCoordinator.resolveLink(rawUrl)) {
+                is LinkResolution.PlayTrack -> play(resolution.track, getApplication<Application>().getString(R.string.msg_shared_link))
+                is LinkResolution.OpenCollection -> {
+                    openDetail(resolution.browseId)
+                    onNavigateDetail(resolution.browseId)
+                }
+                is LinkResolution.PlayCollectionTracks -> playAll(resolution.tracks, contextTitle = resolution.title)
+                null -> Unit
+            }
+        }
+    }
+
+    override fun onCleared() {
+        party.leaveParty(closeRoom = false)
+        local.close()
+        super.onCleared()
+    }
+
+    private fun observeSearch() {
+        viewModelScope.launch {
+            searchQuery.debounce(350).distinctUntilChanged().collectLatest { value ->
+                if (value.isBlank()) {
+                    mutableSearch.value = LoadState.Idle
+                    return@collectLatest
+                }
+                mutableSearch.value = LoadState.Loading
+
+                val linkTarget = graph.songLinks.parseLink(value)
+                if (linkTarget != null) {
+                    when (val res = songLinksCoordinator.resolveLink(value)) {
+                        is LinkResolution.PlayTrack -> {
+                            mutableSearch.value = LoadState.Content(
+                                SearchResults(tracks = listOf(res.track)),
+                            )
+                            return@collectLatest
+                        }
+                        is LinkResolution.PlayCollectionTracks -> {
+                            mutableSearch.value = LoadState.Content(
+                                SearchResults(tracks = res.tracks),
+                            )
+                            return@collectLatest
+                        }
+                        is LinkResolution.OpenCollection -> {
+                            openDetail(res.browseId)
+                        }
+                        null -> Unit
+                    }
+                }
+
+                mutableSearch.value = runCatching { graph.catalog.search(value) }
+                    .fold(
+                        onSuccess = {
+                            if (it.isEmpty) LoadState.Empty(getApplication<Application>().getString(R.string.msg_no_music_matched, value))
+                            else LoadState.Content(it)
+                        },
+                        onFailure = { LoadState.Error(it.message ?: getApplication<Application>().getString(R.string.search_unavailable)) },
+                    )
+            }
+        }
+    }
+
+    private fun observeRemoteDevice() {
+        viewModelScope.launch {
+            graph.connect.devices.collect { remotes ->
+                targetCoordinator.updateRemoteDevices(remotes)
+                mutableTargets.value = targetCoordinator.state
+            }
+        }
+    }
+
+    private fun observeLocalDeviceName() {
+        viewModelScope.launch {
+            settings.map { it.customDeviceName }.distinctUntilChanged().collect { custom ->
+                val base = Build.MODEL.takeIf(String::isNotBlank) ?: getApplication<Application>().selfDeviceLabel()
+                val effective = custom.ifBlank { base }
+                targetCoordinator.updateLocalDeviceName(name = effective, customName = custom)
+                mutableTargets.value = targetCoordinator.state
+                party.updateDisplayName(effective)
+            }
+        }
+    }
+
+    private fun observeLyrics() {
+        viewModelScope.launch {
+            playback.map { it.currentTrack }.distinctUntilChanged { old, new -> old?.id == new?.id }
+                .collectLatest { track ->
+                    if (track == null) {
+                        mutableLyrics.value = LoadState.Idle
+                        return@collectLatest
+                    }
+                    mutableLyrics.value = LoadState.Loading
+                    mutableLyrics.value = runCatching { graph.lyrics.lyrics(track) }
+                        .fold(
+                            onSuccess = {
+                                if (it.isEmpty()) LoadState.Empty(getApplication<Application>().getString(R.string.msg_lyrics_not_available))
+                                else LoadState.Content(it)
+                            },
+                            onFailure = { LoadState.Error(it.message ?: getApplication<Application>().getString(R.string.msg_lyrics_load_failed)) },
+                        )
+                }
+        }
+    }
+
+    private fun observeArtwork() {
+        viewModelScope.launch {
+            combine(
+                targetPlayback.map { it.currentTrack },
+                graph.downloads.downloads,
+            ) { track, downloaded -> track to track?.id?.let(downloaded::get) }
+                .distinctUntilChanged { old, new ->
+                    old.first?.id == new.first?.id &&
+                        old.second?.cachedAnimatedArtworkUrl == new.second?.cachedAnimatedArtworkUrl &&
+                        old.second?.cachedAnimatedArtworkVerticalUrl == new.second?.cachedAnimatedArtworkVerticalUrl
+                }
+                .collectLatest { (track, downloaded) ->
+                    mutableArtwork.value = when {
+                        track == null -> null
+                        downloaded != null && (
+                            downloaded.cachedAnimatedArtworkUrl.isNotBlank() ||
+                                downloaded.cachedAnimatedArtworkVerticalUrl.isNotBlank()
+                        ) -> TrackArtwork(
+                            track.id,
+                            track.artworkUrl,
+                            downloaded.cachedAnimatedArtworkUrl,
+                            downloaded.cachedAnimatedArtworkVerticalUrl,
+                        )
+                        track.animatedArtworkVerticalUrl.isNotBlank() || track.animatedArtworkUrl.isNotBlank() ->
+                            TrackArtwork(track.id, track.artworkUrl, track.animatedArtworkUrl, track.animatedArtworkVerticalUrl)
+                        else -> graph.artwork.artwork(track)
+                    }
+                }
+        }
+    }
+
+    private fun observeArtistCredits() {
+        viewModelScope.launch {
+            targetPlayback.map { it.currentTrack }.distinctUntilChanged { old, new -> old?.id == new?.id }
+                .collectLatest { track ->
+                    if (track == null) {
+                        mutableArtistCredits.value = null
+                        return@collectLatest
+                    }
+                    val existing = track.artists
+                        .filter { it.id.isNotBlank() }
+                        .distinctBy { it.id }
+                    mutableArtistCredits.value = track.id to existing
+                    if (!track.playbackSource.equals("youtube", ignoreCase = true) || existing.size > 1) {
+                        return@collectLatest
+                    }
+                    val resolved = runCatching { graph.catalog.trackArtists(track.id) }.getOrDefault(emptyList())
+                    if (resolved.isNotEmpty()) mutableArtistCredits.value = track.id to resolved
+                }
+        }
+    }
+
+    private fun observeDetailArtwork() {
+        viewModelScope.launch {
+            detail.collectLatest { state ->
+                mutableDetailArtwork.value = null
+                mutableArtistImages.value = null
+                if (state is LoadState.Content) {
+                    val detailVal = state.value
+                    when (detailVal.kind) {
+                        CatalogKind.ALBUM, CatalogKind.PLAYLIST -> {
+                            mutableDetailArtwork.value = graph.artwork.artwork(detailVal)
+                            val performer = detailVal.artist
+                                .ifBlank { detailVal.tracks.firstOrNull { it.artist.isNotBlank() }?.artist.orEmpty() }
+                            if (performer.isNotBlank()) {
+                                mutableArtistImages.value = graph.artistImages.images(performer)
+                            }
+                        }
+                        // Channel avatars are often a logo; TheAudioDB has a real photograph.
+                        CatalogKind.ARTIST ->
+                            mutableArtistImages.value = graph.artistImages.images(detailVal.title)
+                        else -> Unit
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeAuthentication() {
+        viewModelScope.launch {
+            auth.collect { state ->
+                if (state is AuthState.SignedIn) {
+                    graph.library.refreshSignedInLibrary()
+                    refreshHome()
+                }
+            }
+        }
+    }
+
+    private fun observeDiscordPresence() {
+        viewModelScope.launch {
+            combine(playback, settings) { snap, set -> snap to set }.collectLatest { (snap, set) ->
+                graph.discordPresence.setEnabled(set.discordPresenceEnabled)
+                if (set.discordPresenceEnabled) {
+                    val override = if (set.discordAnimatedArtwork) null else ""
+                    graph.discordPresence.updatePlayback(snap, animatedArtworkUrlOverride = override)
+                }
+            }
+        }
+    }
+
+    private fun observeWarnings() {
+        viewModelScope.launch { graph.warningEvent.collect { showWarning(it) } }
+        viewModelScope.launch { party.messages.collect { showWarning(it) } }
+    }
+
+    /** Repairs an explicit id restored from an older queue before it can keep playing clean audio. */
+    private fun observeLocalAudioVersion() {
+        viewModelScope.launch {
+            local.snapshot
+                .map { it.currentTrack }
+                .filterNotNull()
+                .distinctUntilChangedBy { Triple(it.id, it.explicit, it.musicVideoType) }
+                .collectLatest { track ->
+                    if (!track.needsAudioVersionLookup()) return@collectLatest
+                    val audio = graph.audioVersions.audioVersion(track)
+                    if (audio.id != track.id) local.replaceCurrent(track.id, audio)
+                }
+        }
+    }
+
+    fun connectDiscord(context: android.content.Context) {
+        runCatching {
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(graph.discordAuth.buildAuthorizationUrl()))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }.onFailure {
+            showWarning(it.message ?: "No se pudo abrir el navegador")
+        }
+    }
+
+    fun disconnectDiscord() = viewModelScope.launch { graph.discordAuth.signOut() }
+    fun handleDiscordAuthCallback(code: String, state: String?) =
+        viewModelScope.launch { graph.discordAuth.handleAuthorizationCode(code, state) }
+
+    fun connectLastfm(context: android.content.Context) = viewModelScope.launch {
+        runCatching { graph.lastfm.connect() }
+            .onSuccess { url ->
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }.onFailure {
+                    showWarning(it.message ?: "No se pudo abrir el navegador")
+                }
+            }
+            .onFailure { showWarning(it.message ?: getApplication<Application>().getString(R.string.msg_lastfm_connect_failed)) }
+    }
+
+    fun completeLastfmConnection() = viewModelScope.launch {
+        if (!graph.lastfm.complete()) showWarning(getApplication<Application>().getString(R.string.msg_lastfm_approve_orchard))
+    }
+
+    fun disconnectLastfm() = graph.lastfm.disconnect()
+
+    fun connectListenBrainz(token: String) = viewModelScope.launch {
+        if (!graph.listenBrainz.connect(token)) showWarning(getApplication<Application>().getString(R.string.msg_lbz_token_rejected))
+    }
+
+    fun disconnectListenBrainz() = graph.listenBrainz.disconnect()
+
+    private suspend fun transferToRemote(target: PlaybackTarget.Remote) {
+        performTransferToRemote(target, local, graph, targetCoordinator, getApplication())
+        mutableTargets.value = targetCoordinator.state
+    }
+
+    private suspend fun transferToPhone() {
+        performTransferToPhone(local, graph, targetCoordinator, getApplication())
+        mutableTargets.value = targetCoordinator.state
+    }
+
+    private fun remoteOrLocal(remote: () -> Unit, localAction: () -> Unit) {
+        if (targets.value.selected is PlaybackTarget.Remote) remote() else localAction()
+    }
+
+    /**
+     * Transport dispatch for a device that may be a listening-party guest.
+     *
+     * A guest sends the intent to the host and changes nothing locally; the host's answering
+     * snapshot is what actually moves this player, so every device in the room turns over
+     * together instead of one running ahead.
+     */
+    private fun partyOrLocal(action: String, remote: () -> Unit, localAction: () -> Unit) {
+        if (party.interceptTransport(action)) return
+        remoteOrLocal(remote, localAction)
+    }
+
+    // ---------------------------------------------------------------- listening party
+
+    fun createListeningParty() = viewModelScope.launch {
+        runCatching { party.createParty() }
+            .onFailure { showWarning(it.message ?: getApplication<Application>().getString(R.string.msg_party_start_failed)) }
+    }
+
+    fun joinListeningParty(code: String) = viewModelScope.launch {
+        runCatching { party.joinParty(code) }
+            .onFailure { showWarning(it.message ?: getApplication<Application>().getString(R.string.msg_party_join_failed)) }
+    }
+
+    fun leaveListeningParty() = party.leaveParty()
+
+    fun transferListeningPartyHost(participantId: String) = party.transferHost(participantId)
+
+    private companion object {
+        const val TAG = "VeyraViewModel"
+
+        /** Refill once the queue is this short, so the fetch lands well before the music stops. */
+        const val AUTOPLAY_REFILL_THRESHOLD = 3
+        const val AUTOPLAY_QUEUE_LIMIT = 20
+        const val AUTOPLAY_TOTAL_LIMIT = 100
+        const val BEST_MIX_DOWNLOAD_TIMEOUT_MS = 90_000L
+    }
+}
+
+/** Returns the same instance when [videoId] is absent; otherwise removes one playlist row. */
+internal fun BrowseDetail.withPlaylistTrackRemoved(videoId: String): BrowseDetail {
+    val index = tracks.indexOfFirst { it.id == videoId }
+    if (index < 0) return this
+    return copy(tracks = tracks.toMutableList().apply { removeAt(index) })
+}
+
+/** Returns the same instance for invalid/no-op moves; otherwise relocates exactly one row. */
+internal fun BrowseDetail.withPlaylistTrackMoved(fromIndex: Int, toIndex: Int): BrowseDetail {
+    if (fromIndex !in tracks.indices || toIndex !in tracks.indices || fromIndex == toIndex) return this
+    return copy(tracks = tracks.toMutableList().apply { add(toIndex, removeAt(fromIndex)) })
+}

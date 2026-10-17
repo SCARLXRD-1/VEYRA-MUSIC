@@ -1,0 +1,19 @@
+{
+  "name": "@veyramusic/artist-metadata-worker",
+  "version": "0.1.0",
+  "description": "D1-cached iTunes artist genre resolver for Veyra Music.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "check": "node --check src/index.js && node --test",
+    "test": "node --test",
+    "d1:create": "wrangler d1 create veyra-artist-metadata",
+    "d1:migrate:local": "wrangler d1 migrations apply veyra-artist-metadata --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply veyra-artist-metadata --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.103.0"
+  }
+}

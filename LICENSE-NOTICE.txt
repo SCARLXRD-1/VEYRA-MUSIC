@@ -1,0 +1,17 @@
+Veyra Music — información de licencia
+
+Proyecto: Veyra Music
+Desarrollador y sello: AKASHI DEV
+Licencia del proyecto: GNU Affero General Public License, versión 3 o posterior
+(AGPL-3.0-or-later).
+
+El archivo LICENSE contiene el texto íntegro de la licencia en inglés, publicado
+por la Free Software Foundation. Se conserva sin modificaciones.
+
+LICENSE.es.txt contiene una traducción no oficial al español de la GNU AGPL v3,
+traducida por Lucio F. Albenga. Se incluye únicamente como ayuda de lectura; el
+texto original en inglés es el que establece las condiciones de distribución.
+La traducción no fue publicada por la Free Software Foundation.
+
+Fuente de la traducción: https://lucio.albenga.es/web/projects/licencias-fsf/agpl-3.0-es.pdf
+Texto original: https://www.gnu.org/licenses/agpl-3.0.html

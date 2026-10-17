@@ -1,0 +1,214 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import dev.sfg.veyra.mobile.ui.scroll.OrchardLazyRow as LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.platform.InspectorInfo
+import androidx.compose.ui.unit.dp
+import dev.sfg.veyra.mobile.ui.theme.CanopyColors
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+
+/**
+ * Animated shimmer modifier matching SimpMusic shimmer effect.
+ *
+ * A loading screen puts one of these on every placeholder at once. Running it as a node rather
+ * than a `composed` modifier keeps the whole animation in the draw phase: the sweep advances on
+ * frame callbacks and invalidates only its own draw, where the previous version recomposed every
+ * placeholder in the list on every frame and rebuilt its gradient and background modifier as it
+ * went. It also means each call site shares one modifier instance instead of allocating its own.
+ */
+fun Modifier.shimmer(): Modifier = this then ShimmerElement
+
+private object ShimmerElement : ModifierNodeElement<ShimmerNode>() {
+    override fun create() = ShimmerNode()
+
+    override fun update(node: ShimmerNode) = Unit
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "shimmer"
+    }
+
+    override fun hashCode() = "shimmer".hashCode()
+
+    override fun equals(other: Any?) = other === this
+}
+
+private class ShimmerNode : Modifier.Node(), DrawModifierNode {
+    private var startNanos = 0L
+    private var offsetX = 0f
+
+    private var brush: Brush? = null
+    private var brushSize = Size.Unspecified
+    private var brushOffset = Float.NaN
+
+    override fun onAttach() {
+        coroutineScope.launch {
+            while (isActive) {
+                withFrameNanos { frame ->
+                    if (startNanos == 0L) startNanos = frame
+                    val phase = ((frame - startNanos) % SWEEP_NANOS).toFloat() / SWEEP_NANOS
+                    offsetX = phase
+                }
+                invalidateDraw()
+            }
+        }
+    }
+
+    override fun ContentDrawScope.draw() {
+        val start = -2f * size.width + 4f * size.width * offsetX
+        if (size != brushSize || start != brushOffset) {
+            brush = Brush.linearGradient(
+                colors = ShimmerColors,
+                start = Offset(start, 0f),
+                end = Offset(start + size.width, size.height),
+            )
+            brushSize = size
+            brushOffset = start
+        }
+        brush?.let { drawRect(it) }
+        drawContent()
+    }
+}
+
+private val ShimmerColors = listOf(
+    CanopyColors.ShimmerBackground,
+    CanopyColors.ShimmerLine,
+    CanopyColors.ShimmerBackground,
+)
+
+private const val SWEEP_NANOS = 1_000_000_000L
+
+@Composable
+fun CatalogCardShimmer(modifier: Modifier = Modifier) {
+    Column(modifier = modifier.width(140.dp)) {
+        Box(
+            Modifier
+                .size(140.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(CanopyColors.ShimmerBackground)
+                .shimmer()
+        )
+        Spacer(Modifier.height(8.dp))
+        Box(
+            Modifier
+                .width(110.dp)
+                .height(16.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(CanopyColors.ShimmerBackground)
+                .shimmer()
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            Modifier
+                .width(80.dp)
+                .height(12.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(CanopyColors.ShimmerBackground)
+                .shimmer()
+        )
+    }
+}
+
+@Composable
+fun TrackRowShimmer(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(CanopyColors.ShimmerBackground)
+                .shimmer()
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Box(
+                Modifier
+                    .width(180.dp)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(CanopyColors.ShimmerBackground)
+                    .shimmer()
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                Modifier
+                    .width(120.dp)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(CanopyColors.ShimmerBackground)
+                    .shimmer()
+            )
+        }
+    }
+}
+
+@Composable
+fun HomeSectionShimmer(title: String = "Loading...") {
+    Column(Modifier.padding(vertical = 12.dp)) {
+        Box(
+            Modifier
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .width(120.dp)
+                .height(20.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(CanopyColors.ShimmerBackground)
+                .shimmer()
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(userScrollEnabled = false, modifier = Modifier.fillMaxWidth()) {
+            items(5) {
+                CatalogCardShimmer(Modifier.padding(start = 16.dp))
+            }
+        }
+    }
+}

@@ -1,0 +1,145 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.lyrics
+
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class LyricsParserTest {
+    @Test
+    fun synchronizedLyricsAreSortedAndReceiveEndTimes() {
+        val lines = LyricsParser.lrc("[00:12.50]Second\n[00:01.25]First")
+
+        assertEquals(listOf("First", "Second"), lines.map { it.text })
+        assertEquals(1_250L, lines[0].startMs)
+        assertEquals(12_500L, lines[0].endMs)
+        assertEquals(null, lines[1].endMs)
+    }
+
+    @Test
+    fun plainLyricsDiscardBlankLines() {
+        assertEquals(listOf("First", "Second"), LyricsParser.plain(" First \n\n Second ").map { it.text })
+    }
+
+    @Test
+    fun lyricsPlusPayloadPreservesMillisecondTiming() {
+        val root = JSONObject(
+            """{"lyrics":[
+              {"time":513,"duration":1703,"text":"I don't stay in them projects","syllabus":[
+                {"text":"I ","time":513,"duration":144},
+                {"text":"don't ","time":657,"duration":128},
+                {"text":"stay","time":785,"duration":136}
+              ]},
+              {"time":2217,"duration":1687,"syllabus":[{"text":"Second "},{"text":"line"}]}
+            ]}""",
+        )
+
+        val lines = LyricsParser.amPayload(root)
+
+        assertEquals(listOf("I don't stay in them projects", "Second line"), lines.map { it.text })
+        assertEquals(513L, lines[0].startMs)
+        assertEquals(2_216L, lines[0].endMs)
+        assertEquals(2_217L, lines[1].startMs)
+        assertEquals(listOf("I", "don't", "stay"), lines[0].words.map { it.text })
+        assertEquals(listOf(513L, 657L, 785L), lines[0].words.map { it.startMs })
+    }
+
+    @Test
+    fun leadingSpaceSyllablesStillSplitIntoWords() {
+        val root = JSONObject(
+            """{"lyrics":[
+              {"time":100,"duration":900,"syllabus":[
+                {"text":"I","time":100,"duration":100},
+                {"text":" walked","time":200,"duration":300},
+                {"text":" alone","time":500,"duration":400}
+              ]}
+            ]}""",
+        )
+
+        val lines = LyricsParser.amPayload(root)
+
+        assertEquals("I walked alone", lines[0].text)
+        assertEquals(listOf("I", "walked", "alone"), lines[0].words.map { it.text })
+        assertEquals(listOf(100L, 200L, 500L), lines[0].words.map { it.startMs })
+    }
+
+    @Test
+    fun syllablesWithoutWhitespaceUseTheFullLineForWordBoundaries() {
+        val root = JSONObject(
+            """{"lyrics":[
+              {"time":100,"duration":900,"text":"Top Cobain","syllabus":[
+                {"text":"Top","time":100,"duration":200},
+                {"text":"Co","time":300,"duration":250},
+                {"text":"bain","time":550,"duration":450}
+              ]}
+            ]}""",
+        )
+
+        val words = LyricsParser.amPayload(root).single().words
+
+        assertEquals(listOf("Top", "Cobain"), words.map { it.text })
+        assertEquals(listOf(100L, 300L), words.map { it.startMs })
+        assertEquals(listOf(300L, 1_000L), words.map { it.endMs })
+    }
+
+    @Test
+    fun appleTtmlLineTimingIsNormalized() {
+        val lines = LyricsParser.ttml(
+            """<tt xmlns="http://www.w3.org/ns/ttml"><body><div>
+              <p begin="1.2s" end="3.5s"><span begin="1.2s">Hello </span><span begin="2s">world</span></p>
+            </div></body></tt>""",
+        )
+
+        assertEquals("Hello world", lines.single().text)
+        assertEquals(1_200L, lines.single().startMs)
+        assertEquals(3_500L, lines.single().endMs)
+        assertEquals(listOf("Hello", "world"), lines.single().words.map { it.text })
+        assertEquals(listOf(1_200L, 2_000L), lines.single().words.map { it.startMs })
+    }
+
+    @Test
+    fun instrumentalLrclibResponseIsNotReportedAsMissing() {
+        assertEquals(
+            listOf("Instrumental"),
+            LyricsParser.lrcLib(JSONObject().put("instrumental", true)).map { it.text },
+        )
+    }
+
+    @Test
+    fun duetTtmlAssignsPrimaryAndAlternateAgentLanes() {
+        val lines = LyricsParser.ttml(
+            """<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><body><div>
+              <p begin="1.0s" end="3.0s" ttm:agent="v1"><span>Line one from primary</span></p>
+              <p begin="4.0s" end="6.0s" ttm:agent="v2"><span>Line two from secondary</span></p>
+              <p begin="7.0s" end="9.0s" ttm:agent="v1"><span>Line three from primary</span></p>
+            </div></body></tt>""",
+        )
+
+        assertEquals(3, lines.size)
+        assertEquals("primary", lines[0].agentLane)
+        assertEquals("alternate", lines[1].agentLane)
+        assertEquals("primary", lines[2].agentLane)
+    }
+}

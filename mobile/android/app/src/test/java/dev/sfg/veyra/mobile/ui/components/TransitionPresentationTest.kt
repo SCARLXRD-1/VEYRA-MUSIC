@@ -1,0 +1,182 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.ui.components
+
+import dev.sfg.veyra.mobile.model.PlaybackSnapshot
+import dev.sfg.veyra.mobile.model.Track
+import dev.sfg.veyra.mobile.model.TransitionMarker
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class TransitionPresentationTest {
+    private val outgoing = Track("out", "Old title", "Old artist", durationMs = 240_000)
+    private val incoming = Track("in", "New title", "New artist", durationMs = 180_000)
+
+    private fun marker(
+        handoff: Float = 0.7f,
+        renderedDurationMs: Long = 0,
+        rate: Double = 1.0,
+    ) =
+        TransitionMarker(
+            trackId = outgoing.id,
+            startMs = 200_000,
+            endMs = 210_000,
+            style = "dj_blend",
+            incomingTrackId = incoming.id,
+            incomingCueMs = 12_000,
+            incomingPlaybackRate = rate,
+            audibleHandoffProgress = handoff,
+            renderedDurationMs = renderedDurationMs,
+        )
+
+    @Test
+    fun `identity stays outgoing until incoming is strictly louder`() {
+        val atCrossover =
+            PlaybackSnapshot(
+                currentTrack = outgoing,
+                queue = listOf(outgoing, incoming),
+                currentIndex = 0,
+                positionMs = 207_000,
+                durationMs = outgoing.durationMs,
+            )
+        val afterCrossover = atCrossover.copy(positionMs = 207_010)
+
+        assertFalse(transitionPresentation(atCrossover, marker()).incomingDominant)
+        assertTrue(transitionPresentation(afterCrossover, marker()).incomingDominant)
+    }
+
+    @Test
+    fun `artwork metadata and progress move to incoming track together`() {
+        val playback =
+            PlaybackSnapshot(
+                currentTrack = outgoing,
+                queue = listOf(outgoing, incoming),
+                currentIndex = 0,
+                positionMs = 207_500,
+                durationMs = outgoing.durationMs,
+            )
+
+        val presentation = transitionPresentation(playback, marker(rate = 1.04))
+
+        assertEquals(incoming, presentation.playback.currentTrack)
+        assertEquals(1, presentation.playback.currentIndex)
+        assertEquals(19_800, presentation.playback.positionMs)
+        assertEquals(incoming.durationMs, presentation.playback.durationMs)
+    }
+
+    @Test
+    fun `rendered mix uses its zero based clock`() {
+        val playback =
+            PlaybackSnapshot(
+                currentTrack = outgoing,
+                queue = listOf(outgoing, incoming),
+                currentIndex = 0,
+                positionMs = 7_500,
+                durationMs = 10_000,
+            )
+
+        val presentation =
+            transitionPresentation(
+                playback,
+                marker(renderedDurationMs = 10_000),
+            )
+
+        assertEquals(0.75f, presentation.progress, 0.0001f)
+        assertTrue(presentation.incomingDominant)
+        assertEquals(19_500, presentation.playback.positionMs)
+    }
+
+    @Test
+    fun `stale incoming marker does not hold the UI after the overlap`() {
+        val playback =
+            PlaybackSnapshot(
+                currentTrack = incoming,
+                queue = listOf(outgoing, incoming),
+                currentIndex = 1,
+                positionMs = 30_000,
+                durationMs = incoming.durationMs,
+            )
+
+        assertEquals(0f, transitionProgress(playback, marker()), 0f)
+        assertFalse(transitionPresentation(playback, marker()).incomingDominant)
+    }
+
+    @Test
+    fun `stretched render projects incoming time using rendered duration`() {
+        val playback = PlaybackSnapshot(
+            currentTrack = outgoing, queue = listOf(outgoing, incoming), currentIndex = 0,
+            positionMs = 6_000, durationMs = 8_000,
+        )
+        val presentation = transitionPresentation(playback, marker(renderedDurationMs = 8_000))
+        assertEquals(0.75f, presentation.progress, 0.0001f)
+        assertTrue(presentation.incomingDominant)
+        assertEquals(18_000L, presentation.playback.positionMs)
+    }
+
+    @Test
+    fun `incoming remainder never restarts the completed rendered animation`() {
+        val playback = PlaybackSnapshot(
+            currentTrack = incoming, queue = listOf(outgoing, incoming), currentIndex = 1,
+            positionMs = 18_000, durationMs = incoming.durationMs,
+        )
+        assertEquals(0f, transitionProgress(playback, marker(renderedDurationMs = 8_000)), 0f)
+    }
+
+    @Test fun `explicit mix clock keeps full duration before identity handoff`() {
+        val playback = PlaybackSnapshot(
+            currentTrack = outgoing, queue = listOf(outgoing, incoming), currentIndex = 0,
+            positionMs = 202_500, durationMs = outgoing.durationMs, renderedMixPositionMs = 2_000,
+        )
+        val result = transitionPresentation(playback, marker(renderedDurationMs = 8_000))
+        assertEquals(0.25f, result.progress, 0f)
+        assertEquals(240_000L, result.playback.durationMs)
+        assertEquals(202_500L, result.playback.positionMs)
+        assertFalse(result.incomingDominant)
+    }
+
+    @Test fun `explicit mix clock hands identity over without showing mix duration`() {
+        val playback = PlaybackSnapshot(
+            currentTrack = outgoing, queue = listOf(outgoing, incoming), currentIndex = 0,
+            positionMs = 207_500, durationMs = outgoing.durationMs, renderedMixPositionMs = 6_000,
+        )
+        val result = transitionPresentation(playback, marker(renderedDurationMs = 8_000))
+        assertEquals(0.75f, result.progress, 0f)
+        assertEquals(incoming.durationMs, result.playback.durationMs)
+        assertEquals(18_000L, result.playback.positionMs)
+        assertTrue(result.incomingDominant)
+    }
+
+    @Test fun `render timestamp rounding cannot reset the animation at its endpoint`() {
+        val playback = PlaybackSnapshot(
+            currentTrack = outgoing, queue = listOf(outgoing, incoming), currentIndex = 0,
+            positionMs = 210_001, durationMs = outgoing.durationMs, renderedMixPositionMs = 8_001,
+        )
+        val result = transitionPresentation(playback, marker(renderedDurationMs = 8_000))
+        assertEquals(1f, result.progress, 0f)
+        assertTrue(result.incomingDominant)
+        assertEquals(20_000L, result.playback.positionMs)
+    }
+}

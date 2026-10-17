@@ -1,0 +1,57 @@
+# Maintainer: AKASHI DEV <contact@akashi.dev>
+
+pkgname=veyra-packages
+pkgver=5.0.0
+pkgrel=4
+pkgdesc='Small desktop installer and version manager for Veyra Music'
+arch=('x86_64')
+url='https://github.com/SCARLXRD-1/VEYRA-MUSIC'
+license=('AGPL-3.0-or-later')
+depends=('gtk3' 'webkit2gtk-4.1')
+makedepends=('bun' 'go')
+provides=('veyra' 'orchard' 'orchard-packages')
+conflicts=('orchard' 'orchard-packages')
+replaces=('orchard' 'orchard-packages')
+options=('!strip')
+source=(
+  "$pkgname-$pkgver.tar.zst"
+  'veyra-packages.desktop'
+  'veyra-packages.sh'
+)
+sha256sums=('SKIP' 'SKIP' 'SKIP')
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  bun run build:frontend
+  bun run scripts/build-backend.ts linux-x64 --extension
+  bunx neu build
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm755 \
+    'dist/neutralino/veyra-packages/veyra-packages-linux_x64' \
+    "$pkgdir/usr/lib/veyra-packages/veyra-packages"
+  install -Dm644 \
+    'dist/neutralino/veyra-packages/resources.neu' \
+    "$pkgdir/usr/lib/veyra-packages/resources.neu"
+  install -Dm755 \
+    'extensions/veyra-packages-backend' \
+    "$pkgdir/usr/lib/veyra-packages/extensions/veyra-packages-backend"
+  install -Dm755 \
+    "$srcdir/veyra-packages.sh" \
+    "$pkgdir/usr/bin/veyra"
+  ln -s 'veyra' "$pkgdir/usr/bin/orchard"
+  ln -s '../lib/veyra-packages/veyra-packages' \
+    "$pkgdir/usr/bin/veyra-packages"
+  install -Dm644 \
+    "$srcdir/veyra-packages.desktop" \
+    "$pkgdir/usr/share/applications/dev.akashi.veyra.desktop"
+  install -Dm644 \
+    'resources/icons/veyra-packages.png' \
+    "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/dev.akashi.veyra.png"
+  install -Dm644 \
+    'LICENSE' \
+    "$pkgdir/usr/share/licenses/veyra-packages/LICENSE"
+}

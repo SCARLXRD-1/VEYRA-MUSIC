@@ -1,0 +1,176 @@
+<!--
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<script>
+import VirtualQueuePage from './VirtualQueuePage.vue';
+
+export default {
+  name: 'QueueView',
+  components: { VirtualQueuePage },
+  props: { app: { type: Object, required: true } },
+  setup(props) {
+    // The windowed list needs the live refs, not the unwrapped snapshot the
+    // rest of this template reads.
+    return { ...props.app, app: props.app };
+  }
+};
+</script>
+
+<template>
+  <!-- Single root element on purpose: AppFrame swaps the views inside a
+       <Transition mode="out-in">, and a multi-root fragment never fires its
+       leave hook, which wedges the transition and blanks every other view. -->
+  <div class="queue-view">
+    <section class="shelf-section">
+      <div class="section-header">
+        <h2>{{ $t(continuousQueueEnabled ? 'ui.playback.queue' : 'ui.playback.upNext') }}</h2>
+        <div class="queue-view__header-actions">
+          <span>{{ $t('ui.playback.itemCount', { count: queue.length }) }}</span>
+          <button
+            v-if="queue.length > 1"
+            type="button"
+            class="queue-view__sort"
+            :class="{ 'queue-view__sort--active': transitionQueueSorted }"
+            :aria-pressed="transitionQueueSorted"
+            :aria-label="$t(transitionQueueSorted ? 'ui.playback.restoreQueue' : 'ui.playback.sortQueue')"
+            :title="$t(transitionQueueSorted ? 'ui.playback.restoreQueue' : 'ui.playback.sortQueueHint')"
+            :disabled="transitionQueueSortBusy"
+            @click="toggleTransitionQueueSort"
+          >
+            <q-icon name="route" />
+            <span v-if="transitionQueueSortBusy">{{ transitionQueueSortAnalyzedCount }} / {{ transitionQueueSortTotalCount }}</span>
+            <span v-else>{{ $t('ui.playback.bestMix') }}</span>
+          </button>
+          <button
+            v-if="queueTracksForPlaylist().length"
+            type="button"
+            class="queue-view__save-playlist"
+            :title="$t('ui.playback.addToPlaylist')"
+            :aria-label="$t('ui.playback.addToPlaylist')"
+            @click="openQueuePlaylistDialog"
+          >
+            <q-icon name="playlist_add" />
+            <span>{{ $t('ui.playback.saveAsPlaylist') }}</span>
+          </button>
+          <button v-if="queue.length" type="button" class="queue-view__clear" @click="clearQueue">
+            {{ $t('ui.playback.clear') }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="continuousQueueEnabled" class="queue-view__list-wrap">
+        <VirtualQueuePage v-if="continuousQueue.length" :app="app" :entries="continuousQueue" continuous />
+        <div v-else class="table-card"><div class="table-empty">{{ $t('ui.playback.queueEmpty') }}</div></div>
+      </div>
+
+      <div v-else class="queue-view__list-wrap">
+        <VirtualQueuePage v-if="queue.length" :app="app" :entries="queue" />
+        <div v-else class="table-card"><div class="table-empty">{{ $t('ui.playback.queueEmpty') }}</div></div>
+      </div>
+    </section>
+
+    <section v-if="!continuousQueueEnabled" class="shelf-section">
+      <div class="section-header">
+        <h2>{{ $t('ui.playback.recentlyPlayed') }}</h2>
+        <span>{{ history.length }} {{ $t('ui.playback.items') }}</span>
+      </div>
+
+      <div class="table-card">
+        <button
+          v-for="item in history"
+          :key="`history-${item.id}`"
+          type="button"
+          class="table-row"
+          @click="playHistoryTrack(item)"
+          @keydown="onSongActionKeydown($event, item)"
+          @contextmenu="openSongActionMenu(item, $event)"
+        >
+          <span class="table-index">•</span>
+          <span class="table-track">
+            <q-img v-if="item.thumbnail" :src="item.thumbnail" class="table-cover" />
+            <span v-else class="table-cover table-cover--empty">
+              <q-icon name="music_note" />
+            </span>
+            <span class="table-copy">
+              <strong class="explicit-title">
+                <span class="explicit-title__text">{{ item.title }}</span>
+                <ExplicitBadge :explicit="item.explicit" />
+              </strong>
+              <small>{{ itemMeta(item) }}</small>
+            </span>
+          </span>
+          <span class="table-time">{{ item.duration || '—' }}</span>
+        </button>
+
+        <div v-if="!history.length" class="table-empty">{{ $t('ui.playback.nothingPlayed') }}</div>
+      </div>
+    </section>
+
+    <section class="shelf-section">
+      <div class="section-header">
+        <h2>{{ $t('ui.playback.history') }}</h2>
+        <div class="queue-view__header-actions">
+          <span>{{ sessionHistoryCount }} {{ $t('ui.playback.events') }}</span>
+          <button v-if="sessionHistory.length" type="button" class="queue-view__clear" @click="clearSessionHistory">
+            {{ $t('ui.playback.clear') }}
+          </button>
+        </div>
+      </div>
+
+      <div class="table-card session-history">
+        <div
+          v-for="event in sessionHistory"
+          :key="event.id"
+          class="table-row session-history__row"
+        >
+          <span class="session-history__time">{{ sessionEventTime(event) }}</span>
+          <span class="table-track">
+            <q-img v-if="event.track.thumbnail" :src="event.track.thumbnail" class="table-cover" />
+            <span v-else class="table-cover table-cover--empty">
+              <q-icon name="music_note" />
+            </span>
+            <span class="table-copy">
+              <strong class="explicit-title">
+                <span class="explicit-title__text">{{ event.track.title }}</span>
+                <ExplicitBadge :explicit="event.track.explicit" />
+              </strong>
+              <small>{{ sessionEventMeta(event) }}</small>
+            </span>
+          </span>
+          <span class="session-history__action">{{ event.label }}</span>
+          <button
+            type="button"
+            class="table-icon-button"
+            :aria-label="$t('ui.playback.restoreQueueFrom', { title: event.track.title })"
+            :title="$t('ui.playback.restoreQueue')"
+            @click="restoreSessionEvent(event)"
+          >
+            <q-icon name="restore" />
+          </button>
+        </div>
+
+        <div v-if="!sessionHistory.length" class="table-empty">{{ $t('ui.playback.sessionChanges') }}</div>
+      </div>
+    </section>
+  </div>
+</template>

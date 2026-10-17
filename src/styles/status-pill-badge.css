@@ -1,0 +1,180 @@
+/*
+ * Copyright (C) 2026 AKASHI DEV
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* Enterprise Slate & Obsidian Industrial: Status Pill Badge */
+
+.status-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill, 999px);
+  border: var(--border-hairline);
+  background: var(--panel, #131B2B);
+  color: var(--muted-strong, #CBD5E1);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  user-select: none;
+  white-space: nowrap;
+  transition: all 180ms ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.status-pill-badge:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--panel-alt, #1E293B);
+}
+
+.status-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* Status variants */
+.status-pill-badge--active,
+.status-pill-badge--streaming {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.26);
+  color: #34D399;
+}
+
+.status-pill-badge--active .status-pill-dot,
+.status-pill-badge--streaming .status-pill-dot {
+  background: #10B981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+.status-pill-badge--sync,
+.status-pill-badge--accent {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #38BDF8;
+}
+
+.status-pill-badge--sync .status-pill-dot,
+.status-pill-badge--accent .status-pill-dot {
+  background: #38BDF8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+}
+
+.status-pill-badge--primary {
+  background: rgba(30, 108, 235, 0.14);
+  border-color: rgba(30, 108, 235, 0.32);
+  color: #60A5FA;
+}
+
+.status-pill-badge--primary .status-pill-dot {
+  background: #1E6CEB;
+  box-shadow: 0 0 8px rgba(30, 108, 235, 0.7);
+}
+
+.status-pill-badge--warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #FBBF24;
+}
+
+.status-pill-badge--warning .status-pill-dot {
+  background: #F59E0B;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+}
+
+.status-pill-badge--count {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--muted, #94A3B8);
+  font-size: 10.5px;
+  padding: 2px 7px;
+}
+
+/* Sizes */
+.status-pill-badge--sm {
+  padding: 2px 6px;
+  font-size: 10px;
+  gap: 4px;
+}
+
+.status-pill-badge--sm .status-pill-dot {
+  width: 5px;
+  height: 5px;
+}
+
+/* Micro-dot pulse animation */
+@keyframes status-pill-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
+}
+
+.status-pill-badge--pulse .status-pill-dot {
+  animation: status-pill-pulse 2s infinite ease-in-out;
+}
+
+/* Light mode overrides */
+html[data-theme-resolved='light'] .status-pill-badge {
+  background: #FFFFFF;
+  border-color: var(--line, #E2E8F0);
+  color: var(--text, #0F172A);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme-resolved='light'] .status-pill-badge:hover {
+  background: var(--panel-alt, #F1F5F9);
+  border-color: var(--line-strong, #CBD5E1);
+}
+
+html[data-theme-resolved='light'] .status-pill-badge--count {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+  color: var(--muted, #64748B);
+}
+
+html[data-theme-resolved='light'] .status-pill-badge--active,
+html[data-theme-resolved='light'] .status-pill-badge--streaming {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #047857;
+}
+
+html[data-theme-resolved='light'] .status-pill-badge--sync,
+html[data-theme-resolved='light'] .status-pill-badge--accent {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(2, 132, 199, 0.3);
+  color: #0369A1;
+}
+
+html[data-theme-resolved='light'] .status-pill-badge--primary {
+  background: rgba(30, 108, 235, 0.08);
+  border-color: rgba(30, 108, 235, 0.25);
+  color: #1E6CEB;
+}

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declara Veyra Music ante Android Auto como app de medios; sin esto la app no aparece en absoluto. -->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>

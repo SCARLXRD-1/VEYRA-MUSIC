@@ -1,0 +1,16 @@
+@echo off
+set "VEYRA_INSTALL=%APPDATA%\veyra\versions\@VEYRA_MAJOR_VERSION@"
+if exist "%VEYRA_INSTALL%\veyra.cmd" (
+  call "%VEYRA_INSTALL%\veyra.cmd" %*
+  exit /b %ERRORLEVEL%
+)
+set "ORCHARD_INSTALL=%APPDATA%\orchard\versions\@ORCHARD_MAJOR_VERSION@"
+if exist "%ORCHARD_INSTALL%\orchard.cmd" (
+  call "%ORCHARD_INSTALL%\orchard.cmd" %*
+  exit /b %ERRORLEVEL%
+)
+if exist "%~dp0veyra-packages.exe" (
+  "%~dp0veyra-packages.exe" %*
+  exit /b %ERRORLEVEL%
+)
+"%~dp0orchard-packages.exe" %*

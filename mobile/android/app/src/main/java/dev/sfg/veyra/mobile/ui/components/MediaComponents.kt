@@ -1,0 +1,737 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.ui.components
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import dev.sfg.veyra.mobile.ui.scroll.OrchardLazyRow as LazyRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.sfg.veyra.connect.R
+import dev.sfg.veyra.mobile.model.Album
+import dev.sfg.veyra.mobile.model.CatalogItem
+import dev.sfg.veyra.mobile.model.Track
+import dev.sfg.veyra.mobile.ui.glass.GlassTone
+import dev.sfg.veyra.mobile.ui.glass.glassFill
+import dev.sfg.veyra.mobile.ui.glass.glassPane
+import dev.sfg.veyra.mobile.ui.theme.CanopyColors
+import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+
+@Composable
+fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
+    OrchardSectionHeader(title, action = action, onAction = onAction)
+}
+
+@Composable
+fun OrchardSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp,
+            ),
+            color = CanopyColors.Text,
+        )
+        if (action != null && onAction != null) {
+            val haptics = LocalHapticFeedback.current
+            Surface(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onAction()
+                },
+                color = glassFill(CanopyColors.Surface),
+                shape = CircleShape,
+                modifier = Modifier.height(32.dp).glassPane(CircleShape, GlassTone.CONTROL),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Text(
+                        text = action,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = LocalAccent.current,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Expressive rail card with soft rounded artwork (14dp or circular for artists) and clear typography. */
+@Composable
+fun CatalogCard(item: CatalogItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    if (item is CatalogItem.Category) {
+        CategoryCard(item = item, onClick = onClick, modifier = modifier)
+        return
+    }
+    val isArtist = item is CatalogItem.Performer
+    val cornerRadius = if (isArtist) 999.dp else 14.dp
+    val artworkRadius = if (isArtist) 999 else 14
+    val haptics = LocalHapticFeedback.current
+    Column(
+        modifier = modifier
+            .width(140.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }),
+        horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start,
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .shadow(
+                    elevation = if (isArtist) 6.dp else 5.dp,
+                    shape = RoundedCornerShape(cornerRadius),
+                    spotColor = Color.Black.copy(alpha = 0.60f),
+                )
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(Color(0xFF131B2C))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), RoundedCornerShape(cornerRadius))
+        ) {
+            ArtworkTile(item.artworkUrl, item.title, Modifier.fillMaxSize(), artworkRadius)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                item.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = CanopyColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (item is CatalogItem.Song && item.track.explicit) {
+                ExplicitBadge()
+            }
+        }
+        Text(
+            catalogSubtitle(item),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CanopyColors.Muted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Expressive category / genre / mood card with left colored accent stripe. */
+@Composable
+fun CategoryCard(
+    item: CatalogItem.Category,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    val stripeColor = item.stripeColor?.let { Color(it.toInt()) } ?: LocalAccent.current
+    val haptics = LocalHapticFeedback.current
+
+    Surface(
+        modifier = modifier
+            .height(52.dp)
+            .glassPane(shape, GlassTone.CONTROL)
+            .clip(shape)
+            .clickable(onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }),
+        color = glassFill(CanopyColors.Surface),
+        shape = shape,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .fillMaxHeight()
+                    .background(stripeColor),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = CanopyColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/** Expressive top pick hero card with rich gradient scrim and pill badge. */
+@Composable
+fun TopPickCard(item: CatalogItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(18.dp)
+    val haptics = LocalHapticFeedback.current
+    Box(
+        modifier
+            .width(200.dp)
+            .aspectRatio(0.85f)
+            .clip(shape)
+            .border(BorderStroke(1.dp, CanopyColors.Rule), shape)
+            .clickable(onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }),
+    ) {
+        ArtworkTile(item.artworkUrl, item.title, Modifier.fillMaxSize(), 0)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.45f to Color.Black.copy(alpha = 0.35f),
+                        1f to Color.Black.copy(alpha = 0.85f),
+                    ),
+                ),
+        )
+        Column(Modifier.align(Alignment.BottomStart).padding(14.dp)) {
+            StatusPillBadge(
+                label = catalogKind(item).uppercase(),
+                status = StatusPillTone.ACTIVE,
+                size = StatusPillSize.SM,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            if (item is CatalogItem.Song && item.track.explicit) {
+                ExplicitBadge(modifier = Modifier.padding(bottom = 6.dp))
+            }
+            Text(
+                item.title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                catalogSubtitle(item),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.80f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Badge for explicit songs. */
+@Composable
+fun ExplicitBadge(modifier: Modifier = Modifier) {
+    Surface(
+        color = Color.White.copy(alpha = 0.16f),
+        shape = RoundedCornerShape(3.dp),
+        modifier = modifier,
+    ) {
+        Text(
+            text = "E",
+            color = Color.White.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.sp,
+            ),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+        )
+    }
+}
+
+/** Animated mini equalizer bars for active playing tracks. */
+@Composable
+fun MiniEqualizerIndicator(
+    modifier: Modifier = Modifier,
+    color: Color = LocalAccent.current,
+    barCount: Int = 3,
+) {
+    val transition = rememberInfiniteTransition(label = "MiniEqualizer")
+    val phase1 by transition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.95f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 420, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "Bar1",
+    )
+    val phase2 by transition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 0.30f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 560, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "Bar2",
+    )
+    val phase3 by transition.animateFloat(
+        initialValue = 0.40f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 350, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "Bar3",
+    )
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        val heights = listOf(phase1, phase2, phase3)
+        heights.take(barCount).forEach { fraction ->
+            Box(
+                modifier = Modifier
+                    .width(2.5.dp)
+                    .fillMaxHeight(fraction)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(color)
+            )
+        }
+    }
+}
+
+/** Expressive track list row with rounded art or track numbers, active row highlight, and popup actions. */
+@Composable
+fun TrackRow(
+    track: Track,
+    onPlay: () -> Unit,
+    modifier: Modifier = Modifier,
+    trackNumber: Int? = null,
+    showArtwork: Boolean = true,
+    parentArtist: String = "",
+    showDivider: Boolean = false,
+    onPlayNext: (() -> Unit)? = null,
+    onAddToQueue: (() -> Unit)? = null,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
+    onDownload: (() -> Unit)? = null,
+    onRemoveDownload: (() -> Unit)? = null,
+    isDownloaded: Boolean = false,
+    isDownloading: Boolean = false,
+    onViewAlbum: (() -> Unit)? = null,
+    onViewArtist: (() -> Unit)? = null,
+    trailingText: String = durationText(track.durationMs),
+    highlighted: Boolean = false,
+    compact: Boolean = false,
+) {
+    var popupOpen by remember { mutableStateOf(false) }
+    val bgColor by animateColorAsState(
+        if (highlighted) Color(0xFF1E6CEB).copy(alpha = 0.18f) else Color.Transparent,
+        label = "TrackRowBg"
+    )
+    val artworkSize = if (compact) 40.dp else 46.dp
+    val verticalPad = if (compact) 6.dp else 10.dp
+    val titleStyle = if (compact) MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        else MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+    val subtitleStyle = if (compact) MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp)
+        else MaterialTheme.typography.bodySmall
+    val haptics = LocalHapticFeedback.current
+
+    if (popupOpen) {
+        TrackActionsPopup(
+            track = track,
+            onDismiss = { popupOpen = false },
+            onPlay = onPlay,
+            onPlayNext = onPlayNext,
+            onAddToQueue = onAddToQueue,
+            onAddToPlaylist = onAddToPlaylist,
+            onRemoveFromPlaylist = onRemoveFromPlaylist,
+            onMoveUp = onMoveUp,
+            onMoveDown = onMoveDown,
+            onDownload = if (!isDownloaded) onDownload else null,
+            onRemoveDownload = if (isDownloaded) onRemoveDownload else null,
+            onShare = onShare,
+            onViewAlbum = onViewAlbum,
+            onViewArtist = onViewArtist,
+        )
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onPlay()
+            },
+            color = bgColor,
+            shape = RoundedCornerShape(if (compact) 8.dp else 10.dp),
+            border = if (highlighted) BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f)) else null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 1.dp)
+        ) {
+            Row(
+                Modifier.padding(horizontal = 8.dp, vertical = verticalPad),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (showArtwork && trackNumber == null) {
+                    Box(contentAlignment = Alignment.Center) {
+                        ArtworkTile(track.artworkUrl, stringResource(R.string.act_artwork_for, track.title), Modifier.size(artworkSize), if (compact) 8 else 10)
+                        if (highlighted) {
+                            Box(
+                                Modifier
+                                    .size(artworkSize)
+                                    .clip(RoundedCornerShape(if (compact) 8.dp else 10.dp))
+                                    .background(Color.Black.copy(alpha = 0.55f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                MiniEqualizerIndicator(
+                                    modifier = Modifier.height(16.dp),
+                                    color = Color(0xFF38BDF8),
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                } else {
+                    Box(
+                        modifier = Modifier.width(32.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        if (highlighted) {
+                            MiniEqualizerIndicator(
+                                modifier = Modifier.height(16.dp),
+                                color = Color(0xFF38BDF8),
+                            )
+                        } else {
+                            Text(
+                                text = (trackNumber ?: 1).toString(),
+                                color = Color.White.copy(alpha = 0.45f),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 15.sp,
+                                ),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            track.title,
+                            color = if (highlighted) LocalAccent.current else Color.White,
+                            style = titleStyle,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (track.explicit) {
+                            ExplicitBadge()
+                        }
+                    }
+
+                    val displayArtist = track.artist.takeIf {
+                        !it.equals(UNKNOWN_ARTIST_SENTINEL, ignoreCase = true) && it.isNotBlank() && (parentArtist.isBlank() || !it.equals(parentArtist, ignoreCase = true))
+                    }
+                    val displayAlbum = track.album.takeIf { it.isNotBlank() && trackNumber == null }
+                    val subtitle = listOfNotNull(displayArtist, displayAlbum).distinct().joinToString(" • ")
+
+                    if (subtitle.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            subtitle,
+                            color = Color.White.copy(alpha = 0.60f),
+                            style = subtitleStyle,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (isDownloading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        color = LocalAccent.current,
+                        strokeWidth = 2.dp,
+                    )
+                } else if (isDownloaded) {
+                    Icon(
+                        Icons.Rounded.DownloadDone,
+                        contentDescription = stringResource(R.string.collect_downloaded_offline),
+                        tint = LocalAccent.current.copy(alpha = 0.85f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                if (trailingText.isNotBlank()) {
+                    Text(
+                        trailingText,
+                        color = Color.White.copy(alpha = 0.45f),
+                        style = subtitleStyle,
+                        modifier = Modifier.padding(horizontal = 6.dp)
+                    )
+                }
+                IconButton(onClick = { popupOpen = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Rounded.MoreHoriz,
+                        contentDescription = stringResource(R.string.act_actions_for, track.title),
+                        tint = Color.White.copy(alpha = 0.55f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = if (showArtwork && trackNumber == null) 72.dp else 48.dp, end = 16.dp)
+                    .height(0.5.dp)
+                    .background(Color.White.copy(alpha = 0.08f))
+            )
+        }
+    }
+}
+
+
+/** Filter pill chip group inspired by SimpMusic ChipGroup and Desktop Veyra Music. */
+@Composable
+fun <T> OrchardFilterChips(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val activeBrush = remember {
+        Brush.linearGradient(listOf(Color(0xFF2275F8), Color(0xFF104CA8)))
+    }
+    val inactiveBorder = remember {
+        BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+    }
+    val activeBorder = remember {
+        BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.50f))
+    }
+
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(options.size) { index ->
+            val option = options[index]
+            val isSelected = option == selected
+            val haptics = LocalHapticFeedback.current
+
+            Surface(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onSelect(option)
+                },
+                shape = CircleShape,
+                color = Color.Transparent,
+                border = if (isSelected) activeBorder else inactiveBorder,
+                modifier = Modifier
+                    .height(34.dp)
+                    .shadow(
+                        elevation = if (isSelected) 4.dp else 2.dp,
+                        shape = CircleShape,
+                        spotColor = if (isSelected) Color(0xFF1E6CEB).copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.40f),
+                    )
+                    .background(
+                        if (isSelected) activeBrush else Brush.linearGradient(listOf(Color(0xFF131B2B), Color(0xFF131B2B))),
+                        CircleShape,
+                    ),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(
+                        text = label(option),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        ),
+                        color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MessagePanel(title: String, message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+    val shape = RoundedCornerShape(16.dp)
+    Surface(
+        color = glassFill(CanopyColors.Surface),
+        shape = shape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .glassPane(shape)
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = CanopyColors.Text)
+            Spacer(Modifier.height(8.dp))
+            Text(message, color = CanopyColors.Muted, style = MaterialTheme.typography.bodyLarge)
+            if (actionLabel != null && onAction != null) {
+                Spacer(Modifier.height(16.dp))
+                Surface(
+                    onClick = onAction,
+                    color = LocalAccent.current,
+                    shape = CircleShape,
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 18.dp)) {
+                        Text(actionLabel, color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun durationText(durationMs: Long): String {
+    if (durationMs <= 0) return ""
+    val seconds = durationMs / 1_000
+    return "%d:%02d".format(seconds / 60, seconds % 60)
+}
+
+/** Palette sentinel the data layer writes when a track has no credited artist. */
+internal const val UNKNOWN_ARTIST_SENTINEL = "Unknown artist"
+
+/** Localizes the catalog's placeholder artist name at the point of display. */
+@Composable
+internal fun localizedArtistName(name: String): String =
+    if (name.isBlank() || name.equals(UNKNOWN_ARTIST_SENTINEL, ignoreCase = true)) {
+        stringResource(R.string.home_unknown_artist)
+    } else {
+        name
+    }
+
+@Composable
+private fun catalogSubtitle(item: CatalogItem): String = when (item) {
+    is CatalogItem.Song -> localizedArtistName(item.track.artist)
+    // On an artist page the artist name is dropped upstream, so the year is
+    // usually all that is left; elsewhere it reads as "SZA • 2022".
+    is CatalogItem.Record -> albumSubtitle(item.album)
+    is CatalogItem.Performer -> item.artist.subtitle.ifBlank { stringResource(R.string.collect_kind_artist) }
+    is CatalogItem.Collection -> item.playlist.author
+    is CatalogItem.Category -> ""
+}
+
+/**
+ * "SZA • 2017".
+ *
+ * Albums saved before the artist field was populated correctly still hold the whole browse
+ * line — "Album • 2017" — in [Album.artist], which used to render as "Album • 2017 • 2017"
+ * once the year was appended. Rather than migrate the cache, the parts that were never an
+ * artist name are dropped on the way out.
+ */
+private fun albumSubtitle(album: Album): String {
+    val parts = album.artist.split("•").map(String::trim).filter(String::isNotBlank)
+    val artist = parts.filterNot { it.lowercase() in ALBUM_KIND_WORDS || YEAR_ONLY.matches(it) }
+    // A year stranded in the artist line is still the album's year if nothing else has it.
+    val year = album.year.ifBlank { parts.lastOrNull(YEAR_ONLY::matches).orEmpty() }
+    return (artist + year).filter(String::isNotBlank).distinct().joinToString(" • ")
+}
+
+private val ALBUM_KIND_WORDS = setOf("album", "single", "ep", "compilation")
+private val YEAR_ONLY = Regex("""\d{4}""")
+
+@Composable
+private fun catalogKind(item: CatalogItem): String = when (item) {
+    is CatalogItem.Song -> stringResource(R.string.collect_kind_song)
+    is CatalogItem.Record -> stringResource(R.string.collect_kind_album)
+    is CatalogItem.Performer -> stringResource(R.string.collect_kind_artist)
+    is CatalogItem.Collection -> stringResource(R.string.collect_kind_playlist)
+    is CatalogItem.Category -> stringResource(R.string.collect_kind_category)
+}

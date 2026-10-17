@@ -1,0 +1,263 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.ui.screens
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import dev.sfg.veyra.connect.R
+import dev.sfg.veyra.mobile.model.PlaybackSnapshot
+import dev.sfg.veyra.mobile.model.PlaybackTargetState
+import dev.sfg.veyra.mobile.model.Track
+import dev.sfg.veyra.mobile.model.TransitionMarker
+import dev.sfg.veyra.mobile.ui.components.ArtworkTile
+import dev.sfg.veyra.mobile.ui.components.TrackActionsPopup
+
+/** Which mode, if any, has taken over the middle of the player. */
+enum class PlayerPanel { NONE, LYRICS, QUEUE }
+
+/**
+ * Everything below the track title: scrubber, transport, volume, destinations.
+ *
+ * Shared by both layouts. The phone stacks it under the artwork; the tablet puts
+ * it in the right column beside the cover, and neither should drift from the
+ * other as controls are added.
+ */
+@Composable
+fun PlayerControlStack(
+    playback: PlaybackSnapshot,
+    targets: PlaybackTargetState,
+    canControl: Boolean,
+    localControls: Boolean,
+    transition: TransitionMarker?,
+    mixProgress: Float? = null,
+    showBitrate: Boolean,
+    bitrateKbps: Int,
+    isQobuz: Boolean = false,
+    remoteVolume: Float,
+    lyricsActive: Boolean,
+    queueActive: Boolean,
+    onRemoteVolumeChange: (Float) -> Unit,
+    onSeek: (Long) -> Unit,
+    onToggle: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit,
+    onLyrics: () -> Unit,
+    onDevices: () -> Unit,
+    onQueue: () -> Unit,
+    sleepTimerActive: Boolean = false,
+    onSleepTimer: () -> Unit = {},
+    onAudioDeck: () -> Unit = {},
+    audioDeckActive: Boolean = false,
+) {
+    PlayerScrubber(
+        playback = playback,
+        onSeek = onSeek,
+        transition = transition,
+        mixProgress = mixProgress,
+        showBitrate = showBitrate,
+        bitrateKbps = bitrateKbps,
+        isQobuz = isQobuz,
+    )
+    Spacer(Modifier.height(14.dp))
+    PlayerTransportControls(
+        isPlaying = playback.isPlaying,
+        status = playback.status,
+        shuffle = playback.shuffle,
+        repeatMode = playback.repeatMode,
+        localControls = canControl,
+        onToggle = onToggle,
+        onPrevious = onPrevious,
+        onNext = onNext,
+        onShuffle = onShuffle,
+        onRepeat = onRepeat,
+    )
+    Spacer(Modifier.height(18.dp))
+    DeviceVolumeSlider(
+        enabled = canControl,
+        isRemote = !localControls,
+        remoteVolume = remoteVolume,
+        onRemoteVolumeChange = onRemoteVolumeChange,
+    )
+    Spacer(Modifier.height(16.dp))
+    PlayerBottomDestinations(
+        targets = targets,
+        upcomingCount = playback.upcoming.size,
+        onLyrics = onLyrics,
+        lyricsActive = lyricsActive,
+        onDevices = onDevices,
+        onQueue = onQueue,
+        queueActive = queueActive,
+        onAudioDeck = onAudioDeck,
+        audioDeckActive = audioDeckActive,
+    )
+}
+
+/** Compact track identity shown above an open panel, replacing the large title row. */
+@Composable
+fun PanelTrackHeader(
+    track: Track,
+    liked: Boolean,
+    onLiked: () -> Unit,
+    onMore: () -> Unit,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onShare: (() -> Unit)?,
+    isDownloaded: Boolean = false,
+    onDownload: (() -> Unit)? = null,
+    onRemoveDownload: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AnimatedContent(
+            targetState = track,
+            transitionSpec = {
+                (fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 4 })
+                    .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 4 })
+            },
+            label = "PanelTrackHeaderContent",
+            modifier = Modifier.weight(1f),
+        ) { currentTrack ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                ArtworkTile(
+                    currentTrack.artworkUrl,
+                    stringResource(R.string.act_artwork_for, currentTrack.title),
+                    Modifier.size(44.dp),
+                    8,
+                )
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(
+                        currentTrack.title,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        dev.sfg.veyra.mobile.ui.components.localizedArtistName(currentTrack.artist),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.65f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        var menuOpen by remember { mutableStateOf(false) }
+        if (menuOpen) {
+            TrackActionsPopup(
+                track = track,
+                onDismiss = { menuOpen = false },
+                onViewQueue = onMore,
+                onAddToPlaylist = onAddToPlaylist,
+                onDownload = if (!isDownloaded) onDownload else null,
+                onRemoveDownload = if (isDownloaded) onRemoveDownload else null,
+                onShare = onShare,
+            )
+        }
+        TrackActionButtons(
+            liked = liked,
+            onLiked = onLiked,
+            onMore = onMore,
+            onShare = onShare,
+            onOpenMenu = { menuOpen = true },
+        )
+    }
+}
+
+/** Centred status text and indicator for the states where lyrics are loading or unavailable. */
+@Composable
+fun LyricsNotice(
+    message: String,
+    isLoading: Boolean = false,
+    icon: ImageVector? = null,
+) {
+    Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = Color.White.copy(alpha = 0.70f),
+                    strokeWidth = 2.5.dp,
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = Color.White.copy(alpha = 0.50f),
+                )
+            }
+            Text(
+                message,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White.copy(alpha = 0.70f),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}

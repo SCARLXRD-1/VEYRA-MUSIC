@@ -1,0 +1,68 @@
+<!--
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<script>
+export default {
+  name: 'DiagnosticsSection',
+  props: { app: { type: Object, required: true } },
+  setup(props) {
+    return props.app;
+  }
+};
+</script>
+
+<template>
+  <section id="settings-diagnostics" class="settings-section diagnostics-section" aria-labelledby="settings-diagnostics-title">
+    <div class="settings-section__heading">
+      <h2 id="settings-diagnostics-title">{{ $t('ui.integrations.diagnostics') }}</h2>
+      <p>{{ diagnostics.generatedAt ? $t('ui.integrations.lastRefreshed', { time: new Date(diagnostics.generatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }) : $t('ui.integrations.checkBeforeRelease') }}</p>
+    </div>
+
+    <div class="diagnostics-section__actions">
+      <button type="button" class="settings-button" @click="collectDiagnostics">
+        <q-icon name="refresh" />
+        {{ $t('ui.integrations.refresh') }}
+      </button>
+      <button type="button" class="settings-button" :disabled="!diagnostics.report" @click="copyDiagnostics">
+        <q-icon name="content_copy" />
+        {{ $t('ui.integrations.copyReport') }}
+      </button>
+      <span v-if="diagnosticsMessage">{{ diagnosticsMessage }}</span>
+    </div>
+
+    <div class="diagnostics-list">
+      <div v-for="item in diagnostics.items" :key="item.label" class="diagnostics-list__item">
+        <div class="settings-row__copy">
+          <span>{{ item.label }}</span>
+          <p>{{ item.detail }}</p>
+        </div>
+        <span class="diagnostics-list__status" :class="`diagnostics-list__status--${item.status}`">
+          {{ diagnosticTone(item.status) }}
+        </span>
+      </div>
+      <div v-if="!diagnostics.items.length" class="settings-connect-empty">
+        {{ $t('ui.integrations.noDiagnostics') }}
+      </div>
+    </div>
+  </section>
+</template>

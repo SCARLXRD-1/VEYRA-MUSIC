@@ -1,0 +1,282 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+.autoplay-footer {
+  display: grid;
+  min-height: 60px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-squircle-md, 12px);
+  background: linear-gradient(145deg, #151F30 0%, #0E1524 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    4px 5px 12px rgba(0, 0, 0, 0.55),
+    -2px -2px 6px rgba(255, 255, 255, 0.03),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.autoplay-footer > .q-icon {
+  display: none;
+}
+
+.autoplay-footer strong,
+.autoplay-footer span {
+  display: block;
+}
+
+.autoplay-footer strong {
+  color: var(--text, #F8FAFC);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.autoplay-footer span {
+  margin-top: 1px;
+  color: var(--muted, #94A3B8);
+  font-size: 10px;
+}
+
+.autoplay-footer .q-toggle__track {
+  height: 18px;
+  border-radius: 999px;
+  background: #090E18 !important;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.85), inset -1px -1px 2px rgba(255, 255, 255, 0.03) !important;
+  opacity: 1 !important;
+}
+
+.autoplay-footer .q-toggle[aria-checked="true"] .q-toggle__track {
+  background: #0d1e38 !important;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(30, 108, 235, 0.25) !important;
+}
+
+.autoplay-footer .q-toggle__thumb {
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7), -1px -1px 3px rgba(255, 255, 255, 0.06) !important;
+}
+
+.lyrics-sidebar__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(var(--color-1-rgb, 58, 224, 253), 0.08);
+}
+
+.lyrics-sidebar__header h2 {
+  color: var(--text, #F8FAFC);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lyrics-sidebar__header div span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted, #94A3B8);
+  font-size: 10px;
+}
+
+.lyrics-sidebar__status {
+  flex: none;
+  color: rgb(var(--player-accent-soft-rgb));
+  font-size: 10px;
+}
+
+.lyrics-provider-list,
+.lyrics-list,
+.lyrics-message {
+  margin-right: 14px;
+  margin-left: 14px;
+}
+
+.lyrics-list {
+  padding-top: 12px;
+}
+
+/* The sidebar deliberately uses the same lyric stage as the immersive player.
+   Only its frame is adapted to the narrower drawer; typography, word fills,
+   pauses, seeking and edge fades stay owned by the shared fullscreen stack. */
+.lyrics-sidebar .lyrics-sidebar__fullscreen {
+  flex: 1 1 auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0 14px;
+}
+
+.lyrics-sidebar .lyrics-sidebar__fullscreen .fullscreen-player__lyrics-scroll {
+  padding: 34% 4px;
+}
+
+.lyrics-sidebar .lyrics-sidebar__fullscreen .lyrics-line {
+  font-size: clamp(20px, 1.7vw, 28px);
+}
+
+.lyrics-sidebar .lyrics-sidebar__fullscreen .lyrics-line--alternate-agent {
+  padding-left: 34px;
+}
+
+.right-party {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.right-party__room {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--color-1-rgb, 58, 224, 253), 0.08);
+}
+
+.right-party__room span {
+  color: var(--muted, #94A3B8);
+  font-size: 10px;
+}
+
+.right-party__room strong {
+  color: var(--text, #F8FAFC);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.right-party__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.right-party__button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-pill, 999px);
+  background: linear-gradient(145deg, #151F30, #0E1524);
+  box-shadow: 
+    2px 3px 6px rgba(0, 0, 0, 0.5),
+    -1px -1px 3px rgba(255, 255, 255, 0.03),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.04);
+  color: var(--muted-strong, #CBD5E1);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.right-party__button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(145deg, #1B283E, #111A2B);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #FFFFFF;
+  box-shadow: 3px 4px 8px rgba(0, 0, 0, 0.6), -2px -2px 5px rgba(255, 255, 255, 0.04);
+}
+
+.right-party__button:active {
+  transform: translateY(1px);
+  background: #0A0F1A;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.8), inset -1px -1px 2px rgba(255, 255, 255, 0.03);
+}
+
+.right-party__button:focus-visible {
+  outline: 1px solid rgba(var(--color-1-rgb, 58, 224, 253), 0.45);
+  outline-offset: -1px;
+}
+
+.right-party__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.right-party__button--danger {
+  color: #ffb6b6;
+}
+
+.right-party__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.right-party__self,
+.right-party__peer {
+  display: grid;
+  min-height: 36px;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(var(--color-1-rgb, 58, 224, 253), 0.08);
+}
+
+.right-party__self .q-icon,
+.right-party__peer .q-icon {
+  color: rgba(var(--player-accent-rgb), 0.72);
+  font-size: 14px;
+}
+
+.right-party__self strong,
+.right-party__peer strong,
+.right-party__self span,
+.right-party__peer span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-party__self strong,
+.right-party__peer strong {
+  color: var(--text, #F8FAFC);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.right-party__self span,
+.right-party__peer span {
+  color: var(--muted, #94A3B8);
+  font-size: 9px;
+}
+
+.right-party__empty {
+  padding: 8px 0;
+  color: var(--muted, #94A3B8);
+  font-size: 10px;
+}
+
+.app-shell--immersive .lyrics-sidebar,
+.app-shell--immersive .lyrics-sidebar__inner {
+  background: rgba(3, 7, 4, 0.28);
+}
+
+.app-shell--immersive .right-queue-index {
+  background: rgba(3, 7, 4, 0.36);
+}

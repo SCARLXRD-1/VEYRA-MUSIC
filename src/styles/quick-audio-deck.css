@@ -1,0 +1,133 @@
+/*
+ * Copyright (C) 2026 SFG545
+ * Copyright (C) 2026 AKASHI DEV
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* Quick Audio Deck flyout menu for Grove dock */
+
+.quick-audio-deck {
+  background: linear-gradient(145deg, #131B2C 0%, #0D1322 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: var(--radius-card, 16px) !important;
+  box-shadow: 
+    0 16px 36px rgba(0, 0, 0, 0.8),
+    inset 1px 1px 1.5px rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(var(--player-accent-rgb, 30, 108, 235), 0.12) !important;
+  padding: 12px 16px;
+  min-width: 260px;
+  max-width: 300px;
+  backdrop-filter: blur(20px);
+  z-index: 6450 !important;
+}
+
+.quick-audio-deck__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.quick-audio-deck__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-strong, #CBD5E1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-audio-deck__section {
+  margin-bottom: 10px;
+}
+
+.quick-audio-deck__section:last-child {
+  margin-bottom: 0;
+}
+
+.quick-audio-deck__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted, #94A3B8);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.quick-audio-deck__chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.quick-audio-deck__chip {
+  background: #090E18;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-pill, 999px);
+  color: var(--muted, #94A3B8);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.quick-audio-deck__chip:hover {
+  background: #101726;
+  color: #FFFFFF;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.quick-audio-deck__chip.is-active {
+  background: linear-gradient(145deg, #1A283D, #0D1626);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #38BDF8;
+  box-shadow: 
+    inset 1px 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.quick-audio-deck__knob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.quick-audio-deck__switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.quick-audio-deck__switch-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-strong, #CBD5E1);
+}

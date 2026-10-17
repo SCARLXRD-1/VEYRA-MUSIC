@@ -1,0 +1,985 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/* Player bar layout and controls. */
+
+.player-bar {
+  --player-accent-rgb: var(--color-1-rgb, 30, 108, 235);
+  --player-accent-soft-rgb: var(--color-2-rgb, 56, 189, 248);
+  --player-accent-deep-rgb: 19, 27, 43;
+  --player-artwork: none;
+  
+  position: fixed;
+  isolation: isolate;
+  overflow: visible !important;
+  left: calc(196px + 28px) !important;
+  right: calc(320px + 28px) !important;
+  bottom: 20px;
+  width: auto !important;
+  min-height: 84px;
+  padding: 12px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-dock, 26px);
+  background: linear-gradient(145deg, #131B2C 0%, #0D1322 100%);
+  box-shadow: 
+    14px 18px 40px rgba(0, 0, 0, 0.75),
+    -6px -6px 20px rgba(255, 255, 255, 0.03),
+    inset 1px 1px 1.5px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.6),
+    0 0 32px rgba(30, 108, 235, 0.08);
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease;
+}
+
+.app-shell--right-panel-hidden .player-bar {
+  right: 28px !important;
+}
+
+.app-shell--mini-sidebar .player-bar {
+  left: calc(68px + 24px) !important;
+}
+
+/* Sections */
+.player-section {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.player-section--left {
+  flex: 1 1 240px;
+  max-width: 320px;
+  gap: 12px;
+}
+
+.player-section--center {
+  flex: 1.8 1 280px;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.player-section--right {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 360px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Vertical Separators: Chiseled Slot in Obsidian Chassis */
+.player-separator {
+  width: 2px;
+  height: 42px;
+  background: #080D16;
+  box-shadow: 
+    inset 1px 1px 2px rgba(0, 0, 0, 0.95),
+    1px 0 0 rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+  flex-shrink: 0;
+  margin: 0 2px;
+  z-index: 2;
+}
+
+/* Left Section: Track / Art Recessed Bezel */
+.mini-cover-button {
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: #090E18;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 14px;
+  overflow: hidden;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+  box-shadow: 
+    inset 2px 2px 5px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.035),
+    3px 3px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.mini-cover-button:hover {
+  transform: scale(1.04);
+  box-shadow: 
+    inset 2px 2px 5px rgba(0, 0, 0, 0.7),
+    0 8px 20px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.mini-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 11px;
+}
+
+.mini-cover--empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: #0D1424;
+  border-radius: 11px;
+  color: var(--muted, #94A3B8);
+}
+
+.player-track__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.player-track__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mini-title {
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 650;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  max-width: 160px;
+}
+
+.mini-title:hover {
+  text-decoration: underline;
+}
+
+.track-action-btn {
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 0.85;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.track-action-btn:hover {
+  opacity: 1;
+  color: #fff;
+}
+
+.artist-link {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11.5px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.artist-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.mini-album-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 10.5px;
+}
+
+.mini-album-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quality-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.quality-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.format-pill {
+  background: #080D16;
+  color: var(--muted-strong, #CBD5E1);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  box-shadow: 
+    inset 1.5px 1.5px 3px rgba(0, 0, 0, 0.88),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.03),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.duration-pill {
+  color: var(--muted, #94A3B8);
+  background: #080D16;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  box-shadow: 
+    inset 1.5px 1.5px 3px rgba(0, 0, 0, 0.88),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.03),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.dsp-pill {
+  background: #080D16;
+  color: var(--muted, #94A3B8);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  box-shadow: 
+    inset 1.5px 1.5px 3px rgba(0, 0, 0, 0.88),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.dsp-pill:hover,
+.dsp-pill--active {
+  background: rgba(30, 108, 235, 0.18);
+  color: #38BDF8;
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 
+    inset 1px 1px 2px rgba(0, 0, 0, 0.7),
+    0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.dsp-pill--active:hover {
+  background: rgba(30, 108, 235, 0.28);
+  color: #FFFFFF;
+  border-color: rgba(56, 189, 248, 0.65);
+  box-shadow: 
+    inset 1px 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+/* Center Section: Neumorphic Transport Controls */
+.transport-buttons {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.player-bar .player-control,
+.player-bar .volume-btn,
+.player-bar .track-action-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 50% !important;
+  background: linear-gradient(145deg, #151F30, #0E1524);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  box-shadow: 
+    3px 3px 8px rgba(0, 0, 0, 0.6),
+    -2px -2px 6px rgba(255, 255, 255, 0.035),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05);
+  color: #94A3B8 !important;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.player-bar .player-control:hover,
+.player-bar .volume-btn:hover,
+.player-bar .track-action-btn:hover {
+  transform: translateY(-1.5px);
+  background: linear-gradient(145deg, #1A273D, #111A2B);
+  box-shadow: 
+    5px 5px 12px rgba(0, 0, 0, 0.7),
+    -3px -3px 8px rgba(255, 255, 255, 0.06);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #F8FAFC !important;
+}
+
+.player-bar .player-control:active,
+.player-bar .volume-btn:active,
+.player-bar .track-action-btn:active {
+  transform: translateY(1px);
+  background: #0A0F1A !important;
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.03);
+}
+
+/* Active State (Shuffle on / Repeat on / Active modes) */
+.player-bar .player-control.text-primary,
+.player-bar .player-sleep-timer-button--active {
+  background: linear-gradient(145deg, #090E18, #0E1524) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  box-shadow: 
+    inset 3px 3px 7px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.04),
+    0 0 14px rgba(56, 189, 248, 0.3) !important;
+  color: #38BDF8 !important;
+}
+
+.player-bar .player-control:disabled,
+.player-bar .volume-btn:disabled {
+  opacity: 0.35;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: transparent !important;
+  cursor: not-allowed;
+}
+
+/* Central Convex Play/Pause Disc */
+.player-control--play {
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  min-height: 50px;
+  border-radius: 50% !important;
+  font-size: 24px;
+  background: linear-gradient(145deg, #2275F8 0%, #104CA8 100%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.28) !important;
+  box-shadow: 
+    6px 6px 18px rgba(0, 0, 0, 0.85),
+    -3px -3px 8px rgba(56, 189, 248, 0.2),
+    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.45),
+    0 0 24px rgba(30, 108, 235, 0.55) !important;
+  color: #FFFFFF !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.player-bar .player-control--play.bg-primary {
+  background: linear-gradient(145deg, #2275F8 0%, #104CA8 100%) !important;
+}
+
+.player-control--play:hover {
+  transform: scale(1.08);
+  background: linear-gradient(145deg, #2A7DFB 0%, #1458C9 100%) !important;
+  box-shadow: 
+    8px 8px 24px rgba(0, 0, 0, 0.9),
+    -4px -4px 10px rgba(255, 255, 255, 0.22),
+    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.55),
+    0 0 32px rgba(56, 189, 248, 0.72) !important;
+}
+
+.player-control--play:active {
+  transform: scale(0.96);
+  background: linear-gradient(145deg, #0F4599 0%, #1757BD 100%) !important;
+  box-shadow: 
+    inset 4px 4px 8px rgba(0, 0, 0, 0.88),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.15),
+    0 0 14px rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Recessed Groove / Routed Channel */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+}
+
+.progress-slider {
+  flex: 1;
+}
+
+.player-bar .q-slider__track-container {
+  height: 6px;
+  border-radius: 999px;
+  background: #090E18 !important;
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.025);
+}
+
+.player-bar .q-slider__track {
+  height: 6px;
+  border-radius: 999px;
+  opacity: 0.25;
+}
+
+.player-bar .q-slider__selection {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1E6CEB, #38BDF8) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.55);
+}
+
+.player-bar .q-slider__thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #FFFFFF, #94A3B8) !important;
+  box-shadow: 
+    2px 2px 6px rgba(0, 0, 0, 0.75),
+    -1px -1px 3px rgba(255, 255, 255, 0.25),
+    0 0 8px rgba(56, 189, 248, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  transition: transform 0.15s ease;
+}
+
+.player-bar .q-slider:hover .q-slider__thumb {
+  transform: scale(1.15);
+  box-shadow: 
+    3px 3px 8px rgba(0, 0, 0, 0.85),
+    -1px -1px 4px rgba(255, 255, 255, 0.35),
+    0 0 12px rgba(56, 189, 248, 0.8) !important;
+}
+
+.progress-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+}
+
+/* Right Section: Outputs / Volume / Settings */
+.right-top-row,
+.right-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.output-device-pill {
+  background: linear-gradient(145deg, #151F30, #0E1524) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: var(--radius-pill, 999px) !important;
+  color: var(--muted-strong, #CBD5E1) !important;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  text-transform: none;
+  min-height: 30px;
+  max-width: 180px;
+  transition: all 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 
+    3px 3px 8px rgba(0, 0, 0, 0.55),
+    -2px -2px 5px rgba(255, 255, 255, 0.03),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.output-device-pill:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(145deg, #1A283D, #111A2B) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  color: #FFFFFF !important;
+  box-shadow: 
+    5px 5px 12px rgba(0, 0, 0, 0.65),
+    -2px -2px 6px rgba(255, 255, 255, 0.05),
+    0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.output-device-pill:active {
+  transform: translateY(1px);
+  background: #0A0F1A !important;
+  box-shadow: 
+    inset 2px 2px 5px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.03);
+}
+
+.output-device-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Volume Control: Tactile Neumorphic Groove with Responsive Sizing */
+.player-bar .volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 165px;
+  justify-content: flex-end;
+}
+
+.player-bar .volume-slider {
+  width: clamp(48px, 6vw, 76px);
+  min-width: 44px;
+  flex-shrink: 1;
+}
+
+.player-bar .volume-slider .q-slider__track-container {
+  height: 7px;
+  border-radius: 999px;
+  background: #080D16 !important;
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.035),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.player-bar .volume-slider .q-slider__track {
+  height: 7px;
+  border-radius: 999px;
+  opacity: 0.18;
+}
+
+.player-bar .volume-slider .q-slider__selection {
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--wave-accent-start, #1E6CEB), var(--wave-accent-end, #38BDF8)) !important;
+  box-shadow: 0 0 8px rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.5);
+}
+
+.player-bar .volume-slider .q-slider__thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #FFFFFF, #94A3B8) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 
+    2px 2px 5px rgba(0, 0, 0, 0.8),
+    -1px -1px 2px rgba(255, 255, 255, 0.3),
+    0 0 6px rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.6) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.player-bar .volume-slider:hover .q-slider__thumb {
+  transform: scale(1.2);
+  box-shadow: 
+    3px 3px 7px rgba(0, 0, 0, 0.85),
+    -1px -1px 3px rgba(255, 255, 255, 0.4),
+    0 0 10px rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.85) !important;
+}
+
+.player-bar .volume-percentage {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.settings-menu-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 50% !important;
+  background: linear-gradient(145deg, #151F30, #0E1524);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  box-shadow: 
+    3px 3px 8px rgba(0, 0, 0, 0.6),
+    -2px -2px 6px rgba(255, 255, 255, 0.035),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.05);
+  color: #94A3B8 !important;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.settings-menu-btn:hover {
+  transform: translateY(-1.5px);
+  background: linear-gradient(145deg, #1A273D, #111A2B);
+  box-shadow: 
+    5px 5px 12px rgba(0, 0, 0, 0.7),
+    -3px -3px 8px rgba(255, 255, 255, 0.06);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #38BDF8 !important;
+}
+
+.settings-menu-btn:active {
+  transform: translateY(1px);
+  background: #0A0F1A !important;
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.03);
+}
+
+/* Quasar menus normally sit below Veyra's elevated player layer. */
+.player-popup-menu {
+  z-index: 6401 !important;
+}
+
+/* Responsiveness overrides */
+@media (max-width: 1360px) {
+  .player-bar {
+    gap: 12px;
+    padding: 10px 18px;
+  }
+
+  .player-bar .volume-percentage {
+    display: none;
+  }
+
+  .player-bar .volume-slider {
+    width: 60px;
+    min-width: 40px;
+  }
+
+  .player-section--right {
+    max-width: 310px;
+  }
+
+  .right-top-row,
+  .right-bottom-row {
+    gap: 6px;
+  }
+
+  .output-device-pill {
+    max-width: 150px;
+    font-size: 10.5px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .player-bar {
+    left: 20px !important;
+    right: 20px !important;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  .player-section--left {
+    flex: 0 1 200px;
+    min-width: 160px;
+  }
+
+  .mini-album-row {
+    display: none;
+  }
+
+  .player-bar .player-sleep-timer-button {
+    display: none;
+  }
+
+  .player-bar .volume-slider {
+    width: 48px;
+    min-width: 34px;
+  }
+
+  .player-bar .player-control,
+  .player-bar .volume-btn,
+  .player-bar .track-action-btn,
+  .player-bar .settings-menu-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .player-section--right {
+    max-width: 240px;
+  }
+
+  .output-device-pill {
+    max-width: 125px;
+  }
+}
+
+@media (max-width: 1040px) {
+  .player-bar .player-fullscreen-button {
+    display: none;
+  }
+
+  .player-bar .quality-pills-row .duration-pill,
+  .player-bar .quality-pills-row .format-pill {
+    display: none;
+  }
+
+  .player-section--right .volume-wrap {
+    max-width: 80px;
+  }
+
+  .player-bar .volume-slider {
+    width: 40px;
+    min-width: 30px;
+  }
+}
+
+@media (max-width: 900px) {
+  .player-bar {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px;
+    flex-wrap: wrap;
+    min-height: auto;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
+  .player-separator {
+    display: none;
+  }
+
+  .player-section--left {
+    flex: 1 1 100%;
+    order: 1;
+  }
+
+  .player-section--center {
+    flex: 1 1 100%;
+    order: 2;
+  }
+
+  .player-section--right {
+    flex: 1 1 100%;
+    order: 3;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .right-top-row,
+  .right-bottom-row {
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  .right-bottom-row {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .mini-cover-button,
+  .mini-cover {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.app-shell--compact-window .player-fullscreen-button {
+  display: none;
+}
+
+/* The desktop drawer is permanently visible at this size, so duplicate entry
+   points in the transport only add noise. They become the way back into queue
+   and lyrics as soon as the drawer changes into a responsive overlay. */
+.player-right-panel-button {
+  display: none;
+}
+
+.app-shell--right-panel-hidden .player-right-panel-button {
+  display: inline-flex;
+}
+
+/* A narrow player should remain a transport, not turn into a three-storey card.
+   Track and utility controls share the first row and the transport gets the
+   second. This keeps the page usable at the 760x620 case reported in #85. */
+@media (max-width: 900px) {
+  .player-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+  }
+
+  .player-section--left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .player-section--center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .player-section--right {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .right-top-row {
+    display: none;
+  }
+
+  .right-bottom-row {
+    flex: 0 0 auto;
+  }
+
+  .player-section--right .volume-wrap,
+  .player-sleep-timer-button {
+    display: none;
+  }
+
+  .mini-album-row,
+  .quality-pills-row,
+  .player-separator {
+    display: none !important;
+  }
+}
+
+/* Short, narrow windows need one compact control row plus the seek bar. UI
+   zoom changes the CSS viewport too, so this also covers high display scaling. */
+@media (max-width: 900px) and (max-height: 700px) {
+  .player-bar {
+    grid-template-columns: minmax(96px, 1fr) auto auto;
+    grid-template-rows: 48px 28px;
+    gap: 2px 8px;
+    padding: 6px 10px;
+    border-radius: 12px;
+  }
+
+  .player-section--left {
+    min-width: 0;
+  }
+
+  .player-section--center {
+    display: contents;
+  }
+
+  .transport-buttons {
+    width: auto;
+    grid-column: 2;
+    grid-row: 1;
+    gap: 3px;
+  }
+
+  .progress-wrap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 6px;
+  }
+
+  .player-section--right {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .player-section--right .player-fullscreen-button,
+  .player-section--right .settings-menu-btn {
+    display: none;
+  }
+
+  .player-control--play {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .mini-cover-button,
+  .mini-cover {
+    width: 38px;
+    height: 38px;
+  }
+
+  .track-action-btn,
+  .player-track__title-row .explicit-badge {
+    display: none;
+  }
+
+  .progress-time {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .player-bar {
+    left: 6px !important;
+    right: 6px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .player-control--secondary:not(.player-right-panel-button),
+  .settings-menu-btn {
+    display: none;
+  }
+
+  .player-section--left {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 auto;
+    gap: 8px;
+  }
+
+  .mini-cover-button,
+  .mini-cover {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+  }
+
+  .player-track__info {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .mini-title {
+    max-width: 100%;
+    font-size: 12px;
+  }
+
+  .artist-link {
+    font-size: 10.5px;
+  }
+
+  .player-control--play {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .player-control {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .player-right-panel-button {
+    min-width: 34px;
+    min-height: 34px;
+  }
+
+  .progress-wrap {
+    gap: 4px;
+  }
+
+  .progress-time {
+    font-size: 9.5px;
+    min-width: 26px;
+  }
+}

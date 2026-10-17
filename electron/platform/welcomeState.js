@@ -1,0 +1,75 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+export const WELCOME_COMPLETED_KEY = 'veyra:welcome-completed';
+export const LEGACY_WELCOME_COMPLETED_KEY = 'orchard:welcome-completed';
+
+function writeRendererCompletion(window) {
+  if (!window || window.isDestroyed()) return Promise.resolve(false);
+
+  return window.webContents.executeJavaScript(`(() => {
+    for (const key of ['veyra:setup-state', 'orchard:setup-state']) {
+      let state = {};
+      try { state = JSON.parse(localStorage.getItem(key) || '{}'); } catch {}
+      localStorage.setItem(key, JSON.stringify({ ...state, completed: true, welcomeCompleted: true }));
+    }
+    return true;
+  })()`).catch(() => false);
+}
+
+export function setWelcomeCompleted(store, completed) {
+  const result = store?.set(WELCOME_COMPLETED_KEY, Boolean(completed));
+  store?.set?.(LEGACY_WELCOME_COMPLETED_KEY, Boolean(completed));
+  if (!result) return false;
+  store.flush?.();
+  return true;
+}
+
+// The main-process marker is authoritative because it is shared by every
+// renderer and flushed before the welcome window is closed. Existing installs
+// are migrated once from the renderer-owned setup state.
+export async function welcomeRequiredAtLaunch(window, store) {
+  const stored = store?.get(WELCOME_COMPLETED_KEY) ?? store?.get(LEGACY_WELCOME_COMPLETED_KEY);
+  if (stored === true) {
+    // Keep the renderer copy coherent for settings, backups, and upgrade prompts.
+    await writeRendererCompletion(window);
+    return false;
+  }
+  if (stored === false) return true;
+  if (!window || window.isDestroyed()) return true;
+
+  try {
+    const completed = await window.webContents.executeJavaScript(`(() => {
+      try {
+        const raw = localStorage.getItem('veyra:setup-state') || localStorage.getItem('orchard:setup-state');
+        return Boolean(JSON.parse(raw || '{}').welcomeCompleted);
+      } catch {
+        return false;
+      }
+    })()`);
+    if (completed) setWelcomeCompleted(store, true);
+    return !completed;
+  } catch {
+    return true;
+  }
+}

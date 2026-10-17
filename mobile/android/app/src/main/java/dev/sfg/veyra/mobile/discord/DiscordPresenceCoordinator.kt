@@ -1,0 +1,310 @@
+/*
+ * Copyright (C) 2026 SFG545
+ *
+ * This file is part of Veyra Music.
+ *
+ * Veyra Music es un fork de Orchard (https://github.com/SFG5453/Orchard),
+ * mantenido únicamente para consumo personal y sin afiliación con el
+ * proyecto original.
+ *
+ * Veyra Music is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * Veyra Music is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with Veyra Music. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package dev.sfg.veyra.mobile.discord
+
+import android.content.Context
+import android.util.Log
+import dev.sfg.veyra.connect.R
+import dev.sfg.veyra.mobile.model.PlaybackSnapshot
+import dev.sfg.veyra.mobile.model.PlaybackStatus
+import dev.sfg.veyra.mobile.model.Track
+import dev.sfg.veyra.mobile.songlinks.SongLinksRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import java.util.Collections
+import java.util.concurrent.atomic.AtomicLong
+
+/**
+ * High-level coordinator connecting playback events, Discord authentication,
+ * asset registration, SongLinks resolution, and Gateway presence updates.
+ */
+class DiscordPresenceCoordinator(
+    context: Context,
+    http: OkHttpClient,
+    private val auth: DiscordOAuthRepository,
+    private val songLinks: SongLinksRepository,
+    private val scope: CoroutineScope,
+) {
+    private val appContext = context.applicationContext
+    private val gateway = DiscordGatewayClient(http, scope, refreshToken = { auth.forceRefresh() })
+    private val assetRegistrar = DiscordAssetRegistrar(http)
+    private val currentRequestId = AtomicLong(0)
+    private var enhanceJob: Job? = null
+    private var isEnabled = true
+    private var lastTrackId: String? = null
+    private var lastStatus: PlaybackStatus? = null
+    private var lastPositionMs: Long = 0L
+    private var lastUpdateEpochMs: Long = 0L
+    private var lastAnimatedUrl: String? = null
+
+    /**
+     * Image keys already registered with Discord, so a track that has been played
+     * before can carry its artwork on the very first update instead of waiting for
+     * a round trip. Keyed by the artwork the activity was built from.
+     */
+    private val resolvedArtworkKeys: MutableMap<String, String> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, String>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 100
+        }
+    )
+
+    val connectionState: StateFlow<GatewayConnectionState> = gateway.connectionState
+    val authState: StateFlow<DiscordAuthState> = auth.authState
+
+    init {
+        scope.launch {
+            auth.authState.collectLatest { state ->
+                when (state) {
+                    is DiscordAuthState.SignedIn -> {
+                        if (isEnabled) gateway.connect(state.session.accessToken)
+                    }
+                    is DiscordAuthState.SignedOut, is DiscordAuthState.Error -> {
+                        gateway.disconnect()
+                    }
+                    is DiscordAuthState.Authorizing -> Unit
+                }
+            }
+        }
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        isEnabled = enabled
+        if (!enabled) {
+            gateway.updateActivity(null)
+            gateway.disconnect()
+        } else {
+            val session = (auth.authState.value as? DiscordAuthState.SignedIn)?.session
+            if (session != null) {
+                gateway.connect(session.accessToken)
+            }
+        }
+    }
+
+    fun updatePlayback(snapshot: PlaybackSnapshot, animatedArtworkUrlOverride: String? = null) {
+        if (!isEnabled) return
+        val track = snapshot.currentTrack
+        if (track == null || snapshot.status == PlaybackStatus.IDLE) {
+            clearPresence()
+            return
+        }
+
+        val isPlaying = snapshot.status == PlaybackStatus.PLAYING
+        val positionMs = snapshot.positionMs.coerceAtLeast(0)
+        val durationMs = snapshot.durationMs.takeIf { it > 0 } ?: track.durationMs
+        val animatedUrl = animatedArtworkUrlOverride?.takeIf(String::isNotBlank)
+            ?: track.animatedArtworkVerticalUrl.takeIf(String::isNotBlank)
+            ?: track.animatedArtworkUrl.takeIf(String::isNotBlank)
+
+        val now = System.currentTimeMillis()
+        val isSameTrack = (track.id == lastTrackId)
+        val isSameStatus = (snapshot.status == lastStatus)
+        val isSameAnimatedUrl = (animatedUrl == lastAnimatedUrl)
+        val expectedPositionMs = if (isPlaying && lastUpdateEpochMs > 0) {
+            lastPositionMs + (now - lastUpdateEpochMs)
+        } else {
+            lastPositionMs
+        }
+        val isSeek = Math.abs(positionMs - expectedPositionMs) > 3000L
+
+        if (isSameTrack && isSameStatus && isSameAnimatedUrl && !isSeek) {
+            return
+        }
+
+        lastTrackId = track.id
+        lastStatus = snapshot.status
+        lastPositionMs = positionMs
+        lastUpdateEpochMs = now
+        lastAnimatedUrl = animatedUrl
+
+        val requestId = currentRequestId.incrementAndGet()
+
+        // 1. Send immediate base activity. Only a key Discord has already accepted is
+        // usable here; a raw URL would be rejected and blank the artwork that is
+        // currently showing, which is exactly what rapid play/pause used to do.
+        val immediateActivity = buildActivity(
+            track = track,
+            isPlaying = isPlaying,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            artworkKey = resolvedArtworkKeys[artworkCacheKey(track, animatedUrl)],
+            songLinkUrl = null,
+        )
+        gateway.updateActivity(immediateActivity)
+
+        // 2. Concurrently enhance with animated artwork & SongLinks
+        enhanceJob?.cancel()
+        enhanceJob = scope.launch(Dispatchers.IO) {
+            enhancePresence(
+                requestId = requestId,
+                track = track,
+                isPlaying = isPlaying,
+                positionMs = positionMs,
+                durationMs = durationMs,
+                animatedArtworkUrl = animatedUrl,
+            )
+        }
+    }
+
+    private suspend fun enhancePresence(
+        requestId: Long,
+        track: Track,
+        isPlaying: Boolean,
+        positionMs: Long,
+        durationMs: Long,
+        animatedArtworkUrl: String?,
+    ) = withContext(Dispatchers.IO) {
+        val session = auth.getValidSession() ?: return@withContext
+        if (requestId != currentRequestId.get()) return@withContext
+
+        val artworkDeferred = async {
+            assetRegistrar.resolveArtworkAsset(
+                accessToken = session.accessToken,
+                staticArtworkUrl = track.artworkUrl,
+                animatedArtworkUrl = animatedArtworkUrl,
+            )
+        }
+
+        val songLinkDeferred = async {
+            runCatching {
+                songLinks.resolveTrack(track).shareUrl
+            }.getOrNull()
+        }
+
+        val resolvedArtworkKey = artworkDeferred.await()
+        val resolvedSongLinkUrl = songLinkDeferred.await()
+        if (!resolvedArtworkKey.isNullOrBlank()) {
+            resolvedArtworkKeys[artworkCacheKey(track, animatedArtworkUrl)] = resolvedArtworkKey
+        }
+
+        if (requestId != currentRequestId.get()) return@withContext
+
+        val enhancedActivity = buildActivity(
+            track = track,
+            isPlaying = isPlaying,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            artworkKey = resolvedArtworkKey,
+            songLinkUrl = resolvedSongLinkUrl,
+        )
+
+        gateway.updateActivity(enhancedActivity)
+    }
+
+    private fun artworkCacheKey(track: Track, animatedArtworkUrl: String?): String =
+        "${animatedArtworkUrl.orEmpty()}|${track.artworkUrl.orEmpty()}"
+
+    private fun buildActivity(
+        track: Track,
+        isPlaying: Boolean,
+        positionMs: Long,
+        durationMs: Long,
+        artworkKey: String?,
+        songLinkUrl: String?,
+    ): DiscordPresenceActivity {
+        val title = trimDiscordText(track.title, fallback = "Music")
+        val artist = trimDiscordText(track.artist, fallback = "Orchard")
+        val album = trimDiscordText(track.album)
+
+        val now = System.currentTimeMillis()
+        val timestamps = if (isPlaying) {
+            val start = (now - positionMs).coerceAtLeast(0)
+            val end = if (durationMs > positionMs) start + durationMs else null
+            DiscordPresenceTimestamps(start = start, end = end)
+        } else {
+            null
+        }
+
+        val assets = DiscordPresenceAssets(
+            largeImage = artworkKey?.takeIf(String::isNotBlank),
+            largeText = album.ifBlank { title },
+            smallImage = null,
+            smallText = if (isPlaying) {
+                appContext.getString(R.string.media_discord_playing)
+            } else {
+                appContext.getString(R.string.media_discord_paused)
+            },
+        )
+
+        val buttons = buildList {
+            if (!songLinkUrl.isNullOrBlank()) {
+                add(
+                    DiscordPresenceButton(
+                        label = appContext.getString(R.string.media_discord_listen_on_platform),
+                        url = songLinkUrl,
+                    ),
+                )
+            }
+            add(
+                DiscordPresenceButton(
+                    label = appContext.getString(R.string.media_discord_view_project),
+                    url = DISCORD_ORCHARD_PROJECT_URL,
+                ),
+            )
+        }
+
+        return DiscordPresenceActivity(
+            name = artist.ifBlank { "Orchard" },
+            type = 2, // LISTENING
+            details = if (isPlaying) {
+                title
+            } else {
+                appContext.getString(R.string.media_discord_paused_format, title)
+            },
+            state = artist,
+            timestamps = timestamps,
+            assets = assets,
+            buttons = buttons,
+            applicationId = DISCORD_APPLICATION_ID,
+            platform = "android",
+        )
+    }
+
+    fun clearPresence() {
+        lastTrackId = null
+        lastStatus = null
+        lastPositionMs = 0L
+        lastUpdateEpochMs = 0L
+        lastAnimatedUrl = null
+        currentRequestId.incrementAndGet()
+        enhanceJob?.cancel()
+        enhanceJob = null
+        gateway.updateActivity(null)
+    }
+
+    fun disconnect() {
+        clearPresence()
+        gateway.disconnect()
+    }
+
+    companion object {
+        private const val TAG = "DiscordPresence"
+    }
+}
