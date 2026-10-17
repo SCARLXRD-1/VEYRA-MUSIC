@@ -27,6 +27,11 @@ function trackName(track) {
   return String(track?.title || 'Track').trim();
 }
 
+// Prefiere la versión de audio de álbum usada en reproducción.
+function trackPlayableVideoId(track) {
+  return track?.audioVideoId || track?.playbackVideoId || track?.id || '';
+}
+
 function playlistName(playlist) {
   return String(playlist?.title || 'playlist').trim();
 }
@@ -159,7 +164,7 @@ export function installPlaylistActions(ctx) {
     if (ctx.playlistDialogMode.value === 'queue') {
       const tracks = ctx.playlistDialogTracks.value.filter((t) => t?.id);
       if (!tracks.length || !playlist?.id) return;
-      const videoIds = tracks.map((t) => t.id);
+      const videoIds = tracks.map((t) => trackPlayableVideoId(t)).filter(Boolean);
 
       ctx.playlistMutationPending.value = playlist.id;
       ctx.playlistMutationError.value = '';
@@ -182,13 +187,14 @@ export function installPlaylistActions(ctx) {
 
     const track = ctx.playlistDialogTrack.value;
     if (!track?.id || !playlist?.id || playlist.containsTrack) return;
+    const videoId = trackPlayableVideoId(track);
 
     ctx.playlistMutationPending.value = playlist.id;
     ctx.playlistMutationError.value = '';
     try {
       await ctx.emitWithReply('music:playlist:add-track', {
         playlistId: playlist.id,
-        videoId: track.id
+        videoId
       });
       ctx.playlistDialogOpen.value = false;
       ctx.showShareMessage?.(`Added ${trackName(track)} to ${playlistName(playlist)}.`);
@@ -207,7 +213,7 @@ export function installPlaylistActions(ctx) {
     if (ctx.playlistDialogMode.value === 'queue') {
       const tracks = ctx.playlistDialogTracks.value.filter((t) => t?.id);
       if (!tracks.length) return;
-      const videoIds = tracks.map((t) => t.id);
+      const videoIds = tracks.map((t) => trackPlayableVideoId(t)).filter(Boolean);
 
       ctx.playlistMutationPending.value = 'create';
       ctx.playlistMutationError.value = '';
@@ -231,11 +237,12 @@ export function installPlaylistActions(ctx) {
 
     const track = ctx.playlistDialogTrack.value;
     if (!track?.id) return;
+    const videoId = trackPlayableVideoId(track);
 
     ctx.playlistMutationPending.value = 'create';
     ctx.playlistMutationError.value = '';
     try {
-      const created = await ctx.emitWithReply('music:playlist:create', { title, videoId: track.id });
+      const created = await ctx.emitWithReply('music:playlist:create', { title, videoId });
       ctx.playlistDialogOpen.value = false;
       ctx.showShareMessage?.(`Created ${title} with ${trackName(track)}.`);
       await ctx.refreshLibraryAfterMutation(created.id);

@@ -232,3 +232,28 @@ test('createPlaylistMutations bridge adds multiple videoIds to playlist', async 
     ids: ['vid-10', 'vid-20']
   });
 });
+
+test('addTrackToPlaylist preserves album-audio version over video id', async () => {
+  const ctx = createMockAppCtx();
+  let addPayload = null;
+  ctx.emitWithReply = async (event, payload) => {
+    if (event === 'music:playlist:add-track') {
+      addPayload = payload;
+      return { id: payload.playlistId };
+    }
+  };
+
+  ctx.openPlaylistDialog({
+    id: 'video-omv-id',
+    audioVideoId: 'album-atv-id',
+    title: 'Song With Video'
+  });
+  await ctx.addTrackToPlaylist({ id: 'PL1', title: 'Favorites' });
+
+  assert.equal(ctx.playlistDialogOpen.value, false);
+  assert.deepEqual(addPayload, {
+    playlistId: 'PL1',
+    videoId: 'album-atv-id'
+  });
+});
+
