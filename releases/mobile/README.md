@@ -18,7 +18,7 @@
 - **Motor DSP nativo:** Earmark / Signalsmith Stretch (C++/Rust)
 - **SHA-256:**
   ```text
-  41538c2b6b166c892cab7e708a25c7201f9cf735ba21ad80c96bdec5a176a1a3
+  b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea
   ```
 
 ---
