@@ -1,9 +1,34 @@
 [build]
   publish = "website"
 
+[[redirects]]
+  from = "/download/android"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/download/tv"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/download/linux"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/download/windows"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip"
+  status = 302
+  force = true
+
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+

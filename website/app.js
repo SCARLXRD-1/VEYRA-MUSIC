@@ -34,11 +34,13 @@
     }
   };
 
+  const IS_WEB_HOSTED = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+
   const DOWNLOAD_URLS = {
-    mobile: 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk',
-    tv: 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk',
-    linux: 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz',
-    windows: 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip'
+    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk',
+    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk',
+    linux: IS_WEB_HOSTED ? '/download/linux' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz',
+    windows: IS_WEB_HOSTED ? '/download/windows' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip'
   };
 
   /* -------------------------------------------------------------------------
@@ -56,6 +58,7 @@
           arch: 'Universal APK',
           btnLabel: 'Descargar APK TV (129 MB)',
           url: DOWNLOAD_URLS.tv,
+          filename: 'app-release.apk',
           meta: 'Formato: Leanback APK &bull; D-Pad Remote Ready &bull; 129 MB'
         };
       }
@@ -66,6 +69,7 @@
         arch: 'Universal APK',
         btnLabel: 'Descargar APK Móvil (129 MB)',
         url: DOWNLOAD_URLS.mobile,
+        filename: 'app-release.apk',
         meta: 'Formato: APK Universal &bull; Android 12 - 15 &bull; 129 MB'
       };
     }
@@ -78,6 +82,7 @@
         arch: 'x64 Portable',
         btnLabel: 'Descargar Veyra Windows (343 MB)',
         url: DOWNLOAD_URLS.windows,
+        filename: 'veyra-v1.0.0-windows-x64.zip',
         meta: 'Formato: Portable Zip &bull; SMTC Media Ready &bull; 343 MB'
       };
     }
@@ -90,6 +95,7 @@
         arch: 'x86_64',
         btnLabel: 'Descargar Veyra Linux (394 MB)',
         url: DOWNLOAD_URLS.linux,
+        filename: 'veyra-v1.0.0-linux-x64.tar.gz',
         meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 394 MB'
       };
     }
@@ -102,6 +108,7 @@
       arch: 'x86_64',
       btnLabel: 'Descargar Veyra Linux (394 MB)',
       url: DOWNLOAD_URLS.linux,
+      filename: 'veyra-v1.0.0-linux-x64.tar.gz',
       meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 394 MB'
     };
   }
@@ -118,7 +125,11 @@
     if (iconEl && detected.iconSvg) iconEl.innerHTML = detected.iconSvg;
     if (nameEl) nameEl.textContent = detected.name;
     if (archEl) archEl.textContent = detected.arch;
-    if (btnEl) btnEl.href = detected.url;
+    if (btnEl) {
+      btnEl.href = detected.url;
+      btnEl.setAttribute('download', detected.filename);
+      btnEl.setAttribute('data-filename', detected.filename);
+    }
     if (btnLabelEl) btnLabelEl.textContent = detected.btnLabel;
     if (metaEl) {
       metaEl.innerHTML = `<span>${detected.meta}</span> <span class="meta-separator">&bull;</span> <span>Verificado criptográficamente</span> <span class="meta-separator">&bull;</span> <span>Sin telemetría</span>`;
@@ -449,6 +460,33 @@
   }
 
   /* -------------------------------------------------------------------------
+   * 8. Sincronización de Enlaces Directos y Feedback de Descarga
+   * ------------------------------------------------------------------------- */
+  function updateDownloadLinks() {
+    if (IS_WEB_HOSTED) {
+      const mobileBtn = document.querySelector('#card-mobile .download-trigger');
+      const tvBtn = document.querySelector('#card-tv .download-trigger');
+      const linuxBtn = document.querySelector('#card-linux .download-trigger');
+      const windowsBtn = document.querySelector('#card-windows .download-trigger');
+
+      if (mobileBtn) mobileBtn.href = '/download/android';
+      if (tvBtn) tvBtn.href = '/download/tv';
+      if (linuxBtn) linuxBtn.href = '/download/linux';
+      if (windowsBtn) windowsBtn.href = '/download/windows';
+    }
+  }
+
+  function setupDownloadFeedback() {
+    const triggers = document.querySelectorAll('.download-trigger, #detected-download-btn');
+    triggers.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filename = btn.getAttribute('download') || btn.dataset.filename || 'el paquete';
+        showToast(`Iniciando descarga directa de ${filename}`);
+      });
+    });
+  }
+
+  /* -------------------------------------------------------------------------
    * Inicialización
    * ------------------------------------------------------------------------- */
   document.addEventListener('DOMContentLoaded', () => {
@@ -459,5 +497,7 @@
     setupHashVerifier();
     setupQrModal();
     setupLiveVisualizer();
+    updateDownloadLinks();
+    setupDownloadFeedback();
   });
 })();
