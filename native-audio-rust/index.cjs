@@ -28,9 +28,20 @@ const path = require('node:path');
 
 const BINARY_DIRECTORY = path.join(__dirname, 'build');
 
-function binaryName() {
+function binaryName(prefix = 'orchard') {
   const architecture = process.arch === 'arm64' ? 'arm64' : 'x64';
-  return `orchard-audio-${process.platform}-${architecture}.node`;
+  return `${prefix}-audio-${process.platform}-${architecture}.node`;
 }
 
-module.exports = require(path.join(BINARY_DIRECTORY, binaryName()));
+let loaded = null;
+try {
+  loaded = require(path.join(BINARY_DIRECTORY, binaryName('veyra')));
+} catch {
+  try {
+    loaded = require(path.join(BINARY_DIRECTORY, binaryName('orchard')));
+  } catch {
+    loaded = null;
+  }
+}
+
+module.exports = loaded;

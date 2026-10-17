@@ -33,6 +33,10 @@ native-audio-rust/target/
 native-audio-rust/build/
 native-audio-rust/vendor/earmark/target/
 *.apk
+releases/desktop/binaries/*.tar.gz
+releases/desktop/binaries/*.zip
+releases/desktop/binaries/veyra-*
+
 
 # Local memory and AI agent definitions
 memoria.md

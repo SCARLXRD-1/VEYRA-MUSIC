@@ -182,25 +182,27 @@
   justify-content: center;
   gap: 7px;
   padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: #0d110e;
-  color: #d9ddda;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #131B2B;
+  color: #F8FAFC;
   cursor: pointer;
   font-size: 12px;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .update-dialog__button--primary {
-  border-color: rgba(var(--player-accent-rgb), 0.42);
-  background: rgba(var(--player-accent-deep-rgb), 0.5);
-  color: #effff4;
+  border-color: rgba(var(--player-accent-soft-rgb, 56, 189, 248), 0.42);
+  background: rgba(var(--player-accent-deep-rgb, 18, 67, 147), 0.6);
+  color: #F8FAFC;
 }
 
 .update-dialog__button:hover:not(:disabled),
 .update-dialog__button:focus-visible {
   outline: none;
-  border-color: rgba(var(--player-accent-rgb), 0.5);
-  background: #121913;
+  border-color: rgba(56, 189, 248, 0.45);
+  background: #1E293B;
+  transform: translateY(-1px);
 }
 
 .update-dialog__button:disabled {

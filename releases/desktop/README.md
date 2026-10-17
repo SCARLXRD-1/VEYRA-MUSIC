@@ -6,13 +6,21 @@
 
 ---
 
-## 📦 Formatos de Distribución
+## 📦 Formatos de Distribución (v1.0.0 Oficial)
 
-| Sistema Operativo | Formato | Arquitectura | Estado |
-| :--- | :--- | :--- | :--- |
-| **Linux** | AppImage / Deb / Tar.gz | `x86_64`, `aarch64` | Preparado para build |
-| **Windows** | Instalador NSIS (.exe) / Portable (.zip) | `x64` | Preparado para build |
-| **macOS** | DMG / App Zip | `Apple Silicon (arm64)`, `Intel (x64)` | Preparado para build |
+| Sistema Operativo | Formato | Arquitectura | Tamaño | Estado |
+| :--- | :--- | :--- | :--- | :--- |
+| **Linux** | Standalone Tar.gz (`veyra-v1.0.0-linux-x64.tar.gz`) | `x86_64` | 394 MB | ✅ Compilado y verificado |
+| **Windows** | Portable Zip (`veyra-v1.0.0-windows-x64.zip`) | `x64` | 343 MB | ✅ Compilado y verificado |
+
+---
+
+## 🔐 Sumas de Verificación (SHA-256)
+
+```text
+380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac  veyra-v1.0.0-linux-x64.tar.gz
+b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29  veyra-v1.0.0-windows-x64.zip
+```
 
 ---
 
@@ -25,14 +33,20 @@
 
 ---
 
-## 🛠️ Compilación Local de Binarios de Producción
+## 🛠️ Ejecución y Empaquetado
 
-Para compilar el frontend y los paquetes de escritorio:
-
+### En Linux:
 ```bash
-# 1. Compilar addons nativos y bundle de producción
-npm run build
+tar -xzf veyra-v1.0.0-linux-x64.tar.gz
+cd veyra-linux-x64
+./veyra.sh
+```
 
-# 2. Empaquetar binarios para la plataforma actual
-npm run release
+### En Windows:
+1. Descomprimir `veyra-v1.0.0-windows-x64.zip`.
+2. Ejecutar `veyra.exe` o `veyra.cmd`.
+
+### Para Recompilar los Paquetes:
+```bash
+npm run release:desktop
 ```

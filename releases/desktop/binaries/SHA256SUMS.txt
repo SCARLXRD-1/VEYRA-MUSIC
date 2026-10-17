@@ -1,0 +1,2 @@
+380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac  veyra-v1.0.0-linux-x64.tar.gz
+b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29  veyra-v1.0.0-windows-x64.zip

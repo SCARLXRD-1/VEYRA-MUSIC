@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veyra Music — Descargas Oficiales | Cliente de Audio Profesional</title>
+  <meta name="description" content="Descarga directa oficial de Veyra Music para Android Móvil, Smart TV (Android TV), Linux x64 y Windows x64. Audio de alta fidelidad, Smart WSOLA Crossfade y diseño Obsidian Slate.">
+  <meta name="keywords" content="Veyra Music, descarga directa, music player, android apk, smart tv apk, linux music player, windows music player, AKASHI DEV, audio dsp, crossfade wsola">
+  <meta name="author" content="AKASHI DEV">
+  <meta name="theme-color" content="#0B0F19">
+  
+  <!-- Open Graph / Redes Sociales -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Veyra Music — Centro Oficial de Descargas Directas">
+  <meta property="og:description" content="Reproductor de audio de grado profesional para power-users y audiófilos. Disponible para Android Móvil, Smart TV, Linux y Windows.">
+  <meta property="og:image" content="assets/veyra-logo.png">
+  
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Fondo Ambiental Atmosférico -->
+  <div class="ambient-glow ambient-glow--top" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow--bottom" aria-hidden="true"></div>
+
+  <!-- Barra de Navegación Principal -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="#" class="brand-link" aria-label="Inicio Veyra Music">
+        <img src="assets/favicon.png" alt="Logotipo Veyra Music" class="brand-logo" width="36" height="36">
+        <div class="brand-info">
+          <span class="brand-name">Veyra Music</span>
+          <span class="brand-badge">AKASHI DEV</span>
+        </div>
+      </a>
+
+      <nav class="nav-menu" aria-label="Navegación del sitio">
+        <a href="#descargas" class="nav-link">Descargas</a>
+        <a href="#caracteristicas" class="nav-link">Características</a>
+        <a href="#verificacion" class="nav-link">Seguridad SHA-256</a>
+        <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC" target="_blank" rel="noopener noreferrer" class="nav-link nav-link--github">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+
+      <!-- Indicador de Versión Oficial -->
+      <div class="header-status">
+        <span class="status-dot"></span>
+        <span class="status-text">v1.0.0 Estable</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container hero-container">
+        <div class="hero-pill-badge">
+          <span class="pulse-indicator"></span>
+          <span>Lanzamiento Oficial de Producción • v1.0.0</span>
+        </div>
+
+        <h1 class="hero-title">
+          Fidelidad Acústica Extrema.<br>
+          <span class="text-gradient">Control Industrial Absoluto.</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          Veyra Music es el reproductor de audio de alto rendimiento diseñado para audiófilos y power-users.
+          Con motor Smart WSOLA Crossfade, ecualizador paramétrico de 10 bandas y sincronización universal entre Móvil, Smart TV y Escritorio.
+        </p>
+
+        <!-- Tarjeta de Detección de Sistema Inteligente -->
+        <div class="auto-detect-card" id="auto-detect-card">
+          <div class="auto-detect-header">
+            <div class="auto-detect-icon" id="detected-icon">💻</div>
+            <div class="auto-detect-text">
+              <span class="auto-detect-label">Descarga recomendada para tu sistema:</span>
+              <strong class="auto-detect-platform" id="detected-platform-name">Detectando tu plataforma...</strong>
+            </div>
+            <span class="auto-detect-badge" id="detected-arch-badge">64-bit</span>
+          </div>
+
+          <div class="auto-detect-actions">
+            <a href="#descargas" id="detected-download-btn" class="btn btn--primary btn--hero">
+              <svg class="btn-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span id="detected-btn-label">Descargar Veyra v1.0.0</span>
+            </a>
+            <a href="#descargas" class="btn btn--secondary">
+              Ver todas las plataformas (Móvil, TV, PC)
+            </a>
+          </div>
+
+          <div class="auto-detect-meta" id="detected-file-meta">
+            <span>Formato: Standalone</span> • <span>Verificado criptográficamente</span> • <span>Sin telemetría invasiva</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizador Interactivo en Tiempo Real -->
+    <section class="visualizer-section" aria-label="Demostración de motor de audio">
+      <div class="container">
+        <div class="visualizer-rack">
+          <div class="rack-header">
+            <div class="rack-status">
+              <span class="rack-lamp"></span>
+              <span class="rack-title">AUDIO ENGINE DSP TELEMETRY</span>
+            </div>
+            <div class="rack-spec-chips">
+              <span class="chip">96.0 kHz / 24-bit</span>
+              <span class="chip chip--accent">WSOLA ACTIVE</span>
+              <span class="chip">TRUE-PEAK -0.1 dBFS</span>
+            </div>
+          </div>
+
+          <!-- Lienzo de Onda Neumórfica Viva -->
+          <div class="wave-canvas-wrapper">
+            <canvas id="live-wave-canvas" width="1000" height="120" aria-label="Visualizador de onda sonora"></canvas>
+            <div class="wave-overlay-labels">
+              <span>0:00</span>
+              <span class="live-tag">TRANSIENT BEAT ALIGNED</span>
+              <span>LIVE MIX</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Catálogo de Descargas Directas Multiplataforma -->
+    <section class="downloads-section" id="descargas">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">MATRIZ DE DISTRIBUCIÓN</span>
+          <h2 class="section-title">Elige tu Plataforma</h2>
+          <p class="section-description">
+            Paquetes oficiales de producción precompilados y optimizados. Cero instaladores con adware, descargas directas a velocidad completa.
+          </p>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <div class="platform-tabs" role="tablist" aria-label="Filtro de plataformas">
+          <button class="tab-btn active" data-filter="all" role="tab" aria-selected="true">Todas las Plataformas</button>
+          <button class="tab-btn" data-filter="mobile" role="tab" aria-selected="false">📱 Android Móvil</button>
+          <button class="tab-btn" data-filter="tv" role="tab" aria-selected="false">📺 Smart TV & Android TV</button>
+          <button class="tab-btn" data-filter="linux" role="tab" aria-selected="false">🐧 Linux Desktop</button>
+          <button class="tab-btn" data-filter="windows" role="tab" aria-selected="false">🪟 Windows Desktop</button>
+        </div>
+
+        <!-- Rejilla de Tarjetas de Plataforma -->
+        <div class="cards-grid">
+          
+          <!-- TARJETA 1: ANDROID MÓVIL -->
+          <article class="release-card" data-category="mobile" id="card-mobile">
+            <div class="card-badge">📱 Smartphones & Foldables</div>
+            <div class="card-header">
+              <div class="card-platform-icon">🤖</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Veyra Android</h3>
+                <span class="card-version">v1.0.0 Oficial • 129 MB</span>
+              </div>
+            </div>
+
+            <p class="card-text">
+              Experiencia móvil completa con dock flotante Grove squircle, vúmetro tri-banda HUD y motor DSP Earmark optimizado a 120 FPS sin consumo extra de batería.
+            </p>
+
+            <ul class="feature-bullets">
+              <li>✨ <strong>Grove Mode:</strong> Dock flotante ergonómico con onda sinusoidal viva</li>
+              <li>⚡ <strong>Zero GC Allocation:</strong> Fluidez extrema a 120 FPS</li>
+              <li>☁️ <strong>Supabase Sync:</strong> Sincronización continua de playlists</li>
+              <li>📲 <strong>Compatibilidad:</strong> Android 12 hasta Android 15 (ARM64 / ARMv7 / x86_64)</li>
+            </ul>
+
+            <div class="checksum-box">
+              <div class="checksum-label">
+                <span>SHA-256</span>
+                <button class="copy-btn" data-checksum="41538c2b6b166c892cab7e708a25c7201f9cf735ba21ad80c96bdec5a176a1a3" aria-label="Copiar hash SHA-256">
+                  Copiar Hash
+                </button>
+              </div>
+              <code class="checksum-code">41538c2b6b166c89...dec5a176a1a3</code>
+            </div>
+
+            <div class="card-actions">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk" class="btn btn--primary btn--block download-trigger" data-filename="app-release.apk">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Descargar APK (129 MB)</span>
+              </a>
+              <button class="btn btn--outline btn--block show-qr-btn" data-target="qr-modal-mobile">
+                📱 Ver Código QR para Celular
+              </button>
+            </div>
+          </article>
+
+          <!-- TARJETA 2: SMART TV & ANDROID TV -->
+          <article class="release-card" data-category="tv" id="card-tv">
+            <div class="card-badge card-badge--tv">📺 10-Foot UI Experience</div>
+            <div class="card-header">
+              <div class="card-platform-icon">📺</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Veyra Smart TV</h3>
+                <span class="card-version">v1.0.0 Oficial • 129 MB</span>
+              </div>
+            </div>
+
+            <p class="card-text">
+              Diseñado para televisores Google TV, Android TV y Amazon Fire TV. Navegación fluida de 10 pies estilo YouTube TV operada 100% con control remoto y mando D-Pad.
+            </p>
+
+            <ul class="feature-bullets">
+              <li>🎯 <strong>Navegación D-Pad:</strong> Anillos de foco Sky Flare y activación con botón OK</li>
+              <li>🧭 <strong>Barra Lateral Rail:</strong> Menú lateral ergonómico para formato apaisado 16:9</li>
+              <li>🎮 <strong>Controles Multimedia:</strong> Compatibilidad con botones Play/Pause de control físico</li>
+              <li>🛋️ <strong>Compatibilidad:</strong> Android TV 9.0 o superior (Leanback Launcher nativo)</li>
+            </ul>
+
+            <div class="checksum-box">
+              <div class="checksum-label">
+                <span>SHA-256</span>
+                <button class="copy-btn" data-checksum="41538c2b6b166c892cab7e708a25c7201f9cf735ba21ad80c96bdec5a176a1a3" aria-label="Copiar hash SHA-256">
+                  Copiar Hash
+                </button>
+              </div>
+              <code class="checksum-code">41538c2b6b166c89...dec5a176a1a3</code>
+            </div>
+
+            <div class="card-actions">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk" class="btn btn--primary btn--block download-trigger" data-filename="app-release.apk">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Descargar APK TV (129 MB)</span>
+              </a>
+              <button class="btn btn--outline btn--block toggle-instructions-btn" data-target="tv-instructions">
+                Guía de Instalación en TV (ADB)
+              </button>
+            </div>
+
+            <div class="inline-code-box is-hidden" id="tv-instructions">
+              <p class="inline-title">Instalación rápida vía ADB por red:</p>
+              <code>adb connect &lt;ip-de-tu-tv&gt;:5555<br>adb install -r app-release.apk</code>
+            </div>
+          </article>
+
+          <!-- TARJETA 3: LINUX DESKTOP -->
+          <article class="release-card" data-category="linux" id="card-linux">
+            <div class="card-badge card-badge--linux">🐧 Linux Standalone (x64)</div>
+            <div class="card-header">
+              <div class="card-platform-icon">🐧</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Veyra Linux</h3>
+                <span class="card-version">v1.0.0 Oficial • 394 MB</span>
+              </div>
+            </div>
+
+            <p class="card-text">
+              Paquete standalone para distribuciones Linux x86_64. Incluye runtime Electron optimizado, aceleración de video por hardware y addon C++/Rust para análisis de audio local.
+            </p>
+
+            <ul class="feature-bullets">
+              <li>🔊 <strong>DSP Nativo:</strong> Motor Web Audio asistido por Rust con Smart WSOLA</li>
+              <li>🎛️ <strong>Integración de Escritorio:</strong> MPRIS, Discord Rich Presence y atajos multimedia</li>
+              <li>🖥️ <strong>Soporte Wayland & X11:</strong> Compatible con Ubuntu, Fedora, Arch Linux, Manjaro, Debian</li>
+              <li>📦 <strong>Sin Instalador:</strong> Descomprimir y ejecutar directamente con <code>./veyra.sh</code></li>
+            </ul>
+
+            <div class="checksum-box">
+              <div class="checksum-label">
+                <span>SHA-256</span>
+                <button class="copy-btn" data-checksum="380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac" aria-label="Copiar hash SHA-256">
+                  Copiar Hash
+                </button>
+              </div>
+              <code class="checksum-code">380e01b4bcb502bf...aade38aa21ded0d3aac</code>
+            </div>
+
+            <div class="card-actions">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz" class="btn btn--primary btn--block download-trigger" data-filename="veyra-v1.0.0-linux-x64.tar.gz">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Descargar Tar.gz (394 MB)</span>
+              </a>
+              <button class="btn btn--outline btn--block toggle-instructions-btn" data-target="linux-instructions">
+                Comando Terminal de Inicio
+              </button>
+            </div>
+
+            <div class="inline-code-box is-hidden" id="linux-instructions">
+              <p class="inline-title">Descomprimir e iniciar:</p>
+              <code>tar -xzf veyra-v1.0.0-linux-x64.tar.gz<br>cd veyra-linux-x64 && ./veyra.sh</code>
+            </div>
+          </article>
+
+          <!-- TARJETA 4: WINDOWS DESKTOP -->
+          <article class="release-card" data-category="windows" id="card-windows">
+            <div class="card-badge card-badge--win">🪟 Windows Portable (x64)</div>
+            <div class="card-header">
+              <div class="card-platform-icon">🪟</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Veyra Windows</h3>
+                <span class="card-version">v1.0.0 Oficial • 343 MB</span>
+              </div>
+            </div>
+
+            <p class="card-text">
+              Versión portable limpia para Windows 10 y Windows 11 de 64-bit. No requiere instalación ni permisos de administrador; descomprime y reproduce inmediatamente.
+            </p>
+
+            <ul class="feature-bullets">
+              <li>🎵 <strong>SMTC Nativo:</strong> Controles multimedia integrados en barra de tareas y teclado</li>
+              <li>🚀 <strong>Zero Registry Bloat:</strong> No ensucia el registro de Windows ni crea servicios en segundo plano</li>
+              <li>💎 <strong>UI GPU-Accelerated:</strong> Espectro de audio a 60 FPS con aceleración Direct3D</li>
+              <li>🛡️ <strong>Portabilidad:</strong> Llévalo en una memoria USB o disco externo sin perder configuración</li>
+            </ul>
+
+            <div class="checksum-box">
+              <div class="checksum-label">
+                <span>SHA-256</span>
+                <button class="copy-btn" data-checksum="b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29" aria-label="Copiar hash SHA-256">
+                  Copiar Hash
+                </button>
+              </div>
+              <code class="checksum-code">b5116718574bd13e...e5c1bbd253f6c35b29</code>
+            </div>
+
+            <div class="card-actions">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip" class="btn btn--primary btn--block download-trigger" data-filename="veyra-v1.0.0-windows-x64.zip">
+                <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Descargar Zip (343 MB)</span>
+              </a>
+              <button class="btn btn--outline btn--block toggle-instructions-btn" data-target="windows-instructions">
+                Instrucciones de Ejecución
+              </button>
+            </div>
+
+            <div class="inline-code-box is-hidden" id="windows-instructions">
+              <p class="inline-title">Ejecución inmediata:</p>
+              <code>1. Extrae el archivo ZIP<br>2. Haz doble clic en veyra.exe</code>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Características Destacadas -->
+    <section class="features-section" id="caracteristicas">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">INGENIERÍA ACÚSTICA</span>
+          <h2 class="section-title">Por qué Veyra Music es Diferente</h2>
+          <p class="section-description">
+            Creado para quienes la calidad de sonido y la precisión técnica no son negociables.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-box">
+            <div class="feature-icon">🎚️</div>
+            <h3 class="feature-heading">Smart WSOLA Crossfade</h3>
+            <p class="feature-text">
+              Algoritmo de mezcla predictivo basado en detección de transitorios de percusión y estiramiento temporal WSOLA. Transiciones impecables sin caídas de volumen ni desfasajes rítmicos.
+            </p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-icon">🎛️</div>
+            <h3 class="feature-heading">EQ Paramétrico de 10 Bandas</h3>
+            <p class="feature-text">
+              Ecualizador de audio analógico modelado con perillas táctiles neumórficas, ajuste de ganancia Preamp (-12 a +6 dB) y balance estéreo bit-perfect.
+            </p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-icon">🌌</div>
+            <h3 class="feature-heading">Enterprise Slate & Obsidian</h3>
+            <p class="feature-text">
+              Sistema visual industrial con tarjetas squircle, bordes hairline, atmósfera dinámica de carátula difuminada y telemetría de estudio OLED en tiempo real.
+            </p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-icon">☁️</div>
+            <h3 class="feature-heading">Supabase Cloud + Local SQLite</h3>
+            <p class="feature-text">
+              Sincronización híbrida de alto rendimiento. Datos de canciones cacheados localmente en base de datos SQLite para reproducción instantánea y sincronizados con la nube.
+            </p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-icon">📺</div>
+            <h3 class="feature-heading">Ecosistema 100% Unificado</h3>
+            <p class="feature-text">
+              Pasa de tu teléfono a tu Smart TV o tu estación de trabajo en Linux o Windows conservando tus configuraciones, perfiles de ecualización y sesiones de escucha.
+            </p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-icon">🔒</div>
+            <h3 class="feature-heading">Privacidad & Open Source</h3>
+            <p class="feature-text">
+              Código auditable bajo licencia AGPL-3.0. Cero rastreo publicitario, cero minería de datos personales y verificación criptográfica estricta de cada binario.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Verificación Criptográfica Interactiva -->
+    <section class="verify-section" id="verificacion">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">SEGURIDAD CRIPTOGRÁFICA</span>
+          <h2 class="section-title">Validador de Integridad SHA-256</h2>
+          <p class="section-description">
+            Verifica al instante que el archivo que descargaste no ha sido alterado y corresponde con la compilación oficial de AKASHI DEV.
+          </p>
+        </div>
+
+        <div class="verify-card">
+          <div class="verify-input-group">
+            <label for="sha-input" class="verify-label">Pega aquí el hash SHA-256 de tu archivo descargado:</label>
+            <div class="input-with-button">
+              <input type="text" id="sha-input" class="verify-input" placeholder="Ej: 380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac" spellcheck="false" autocomplete="off">
+              <button id="verify-btn" class="btn btn--primary">Comprobar</button>
+            </div>
+          </div>
+
+          <div class="verify-result is-hidden" id="verify-result"></div>
+
+          <div class="checksum-table-wrapper">
+            <h3 class="table-title">Hashes Oficiales Publicados (v1.0.0)</h3>
+            <table class="checksum-table">
+              <thead>
+                <tr>
+                  <th>Plataforma</th>
+                  <th>Archivo</th>
+                  <th>Tamaño</th>
+                  <th>Hash SHA-256 Oficial</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>📱 Android Móvil</td>
+                  <td><code>app-release.apk</code></td>
+                  <td>129 MB</td>
+                  <td><code class="hash-text">41538c2b6b166c892cab7e708a25c7201f9cf735ba21ad80c96bdec5a176a1a3</code></td>
+                </tr>
+                <tr>
+                  <td>📺 Smart TV</td>
+                  <td><code>app-release.apk</code></td>
+                  <td>129 MB</td>
+                  <td><code class="hash-text">41538c2b6b166c892cab7e708a25c7201f9cf735ba21ad80c96bdec5a176a1a3</code></td>
+                </tr>
+                <tr>
+                  <td>🐧 Linux Desktop</td>
+                  <td><code>veyra-v1.0.0-linux-x64.tar.gz</code></td>
+                  <td>394 MB</td>
+                  <td><code class="hash-text">380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac</code></td>
+                </tr>
+                <tr>
+                  <td>🪟 Windows Desktop</td>
+                  <td><code>veyra-v1.0.0-windows-x64.zip</code></td>
+                  <td>343 MB</td>
+                  <td><code class="hash-text">b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal para Código QR Móvil -->
+  <div class="modal-backdrop is-hidden" id="qr-modal-mobile" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
+    <div class="modal-card">
+      <button class="modal-close-btn" id="qr-modal-close" aria-label="Cerrar ventana emergente">&times;</button>
+      <h3 class="modal-title" id="qr-modal-title">Escanear para Descargar en Celular</h3>
+      <p class="modal-subtitle">Apunta la cámara de tu smartphone para descargar el APK directamente al dispositivo.</p>
+      
+      <div class="qr-canvas-box">
+        <canvas id="qr-code-canvas" width="220" height="220"></canvas>
+      </div>
+
+      <p class="qr-url-text"><code>https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk</code></p>
+    </div>
+  </div>
+
+  <!-- Notificación Toast -->
+  <div class="toast is-hidden" id="toast" role="alert" aria-live="polite">
+    <span class="toast-message" id="toast-message">Hash copiado al portapapeles</span>
+  </div>
+
+  <!-- Pie de Página Oficial -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <div class="footer-brand">
+        <img src="assets/favicon.png" alt="Logotipo Veyra Music" width="28" height="28">
+        <span class="footer-name">Veyra Music</span>
+        <span class="footer-badge">Desarrollado bajo el sello AKASHI DEV</span>
+      </div>
+
+      <div class="footer-attribution">
+        <p>Fork con capacidades acústicas avanzadas basado en el proyecto original <strong>Orchard</strong> por <strong>SFG5453</strong>.</p>
+        <p>Distribuido bajo licencia <strong>AGPL-3.0-or-later</strong>. Todos los derechos reconocidos.</p>
+      </div>
+
+      <div class="footer-links">
+        <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC" target="_blank" rel="noopener noreferrer">Repositorio Oficial</a>
+        <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases" target="_blank" rel="noopener noreferrer">Releases en GitHub</a>
+        <a href="https://github.com/SFG5453/Orchard" target="_blank" rel="noopener noreferrer">Orchard Upstream</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

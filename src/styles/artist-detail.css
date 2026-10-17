@@ -458,8 +458,9 @@
 .detail-page--artist .media-card__art,
 .detail-page--artist .media-card__art--empty {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
-  background: #0d110e;
+  border-radius: var(--radius-squircle-md, 12px);
+  background: #131B2C;
+  box-shadow: 6px 8px 18px rgba(0, 0, 0, 0.55);
 }
 
 .detail-page--artist .media-card--artist {
@@ -473,8 +474,8 @@
 
 .detail-page--artist .media-card__title {
   margin-top: 2px;
-  color: #dfe4e0;
-  font-size: 11px;
+  color: var(--text, #F8FAFC);
+  font-size: 11.5px;
   font-weight: 650;
 }
 

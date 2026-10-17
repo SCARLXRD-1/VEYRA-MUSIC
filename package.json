@@ -18,6 +18,8 @@
     "build:native": "npm run build:native:media && sh scripts/build-native-audio.sh",
     "build:frontend": "vite build",
     "build:linux": "vite build && cd linux && cargo build",
+    "release:desktop": "node scripts/build-desktop-packages.mjs",
+    "serve:website": "python3 -m http.server 8080 --directory website",
     "start": "npm run build:frontend && node scripts/launch-electron.mjs",
     "build:artist-pack": "node scripts/build-official-artist-pack.mjs",
     "test": "node --test test/*.test.js",
