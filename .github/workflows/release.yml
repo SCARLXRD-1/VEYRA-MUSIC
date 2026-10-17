@@ -98,11 +98,11 @@ jobs:
             git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}"
           fi
 
-          manager_version="$(node -p "require('./orchard-packages/package.json').version")"
+          manager_version="$(node -p "require('./veyra-packages/package.json').version")"
           if [[ "$mobile_only" != "true" ]]; then
             expected_manager_version="${version%%.*}.0.0"
             if [[ "$manager_version" != "$expected_manager_version" ]]; then
-              echo "Orchard Packages must be $expected_manager_version for Orchard $version, not $manager_version." >&2
+              echo "Veyra Packages must be $expected_manager_version for Veyra $version, not $manager_version." >&2
               exit 1
             fi
           fi
