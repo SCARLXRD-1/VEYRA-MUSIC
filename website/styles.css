@@ -623,7 +623,7 @@ body {
 /* Grid de Tarjetas */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
 }
 
@@ -634,7 +634,6 @@ body {
   padding: 22px;
   display: flex;
   flex-direction: column;
-  position: relative;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -644,29 +643,32 @@ body {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
 }
 
-.card-badge {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--accent-glow);
-  background: rgba(56, 189, 248, 0.08);
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-}
-
-.card-header {
+.card-top-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
+.card-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent-glow);
+  background: rgba(56, 189, 248, 0.08);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  white-space: nowrap;
+}
+
+.card-heading {
+  margin-bottom: 12px;
+}
+
 .card-platform-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-squircle);
@@ -677,20 +679,27 @@ body {
   flex-shrink: 0;
 }
 
-.card-title-group {
-  display: flex;
-  flex-direction: column;
-}
-
 .card-title {
-  font-size: 1.15rem;
+  font-size: 1.22rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin-bottom: 2px;
 }
 
 .card-version {
   font-size: 0.76rem;
   color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.card-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .card-text {
@@ -1171,13 +1180,23 @@ body {
 }
 
 /* Responsividad Adaptable */
+@media (max-width: 1120px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 860px) {
   .hero-section {
-    padding: 48px 0 32px;
+    padding: 44px 0 28px;
   }
   
   .auto-detect-card {
     padding: 18px;
+  }
+  
+  .features-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 }
 
@@ -1204,7 +1223,7 @@ body {
 
   .platform-tabs {
     justify-content: flex-start;
-    padding-bottom: 8px;
+    padding: 4px 12px 10px;
   }
 
   .cards-grid {
