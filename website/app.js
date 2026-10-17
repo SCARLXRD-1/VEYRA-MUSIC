@@ -129,6 +129,7 @@
       btnEl.href = detected.url;
       btnEl.setAttribute('download', detected.filename);
       btnEl.setAttribute('data-filename', detected.filename);
+      btnEl.setAttribute('target', 'download_target_frame');
     }
     if (btnLabelEl) btnLabelEl.textContent = detected.btnLabel;
     if (metaEl) {
@@ -469,19 +470,32 @@
       const linuxBtn = document.querySelector('#card-linux .download-trigger');
       const windowsBtn = document.querySelector('#card-windows .download-trigger');
 
-      if (mobileBtn) mobileBtn.href = '/download/android';
-      if (tvBtn) tvBtn.href = '/download/tv';
-      if (linuxBtn) linuxBtn.href = '/download/linux';
-      if (windowsBtn) windowsBtn.href = '/download/windows';
+      if (mobileBtn) {
+        mobileBtn.href = '/download/android';
+        mobileBtn.setAttribute('target', 'download_target_frame');
+      }
+      if (tvBtn) {
+        tvBtn.href = '/download/tv';
+        tvBtn.setAttribute('target', 'download_target_frame');
+      }
+      if (linuxBtn) {
+        linuxBtn.href = '/download/linux';
+        linuxBtn.setAttribute('target', 'download_target_frame');
+      }
+      if (windowsBtn) {
+        windowsBtn.href = '/download/windows';
+        windowsBtn.setAttribute('target', 'download_target_frame');
+      }
     }
   }
 
   function setupDownloadFeedback() {
     const triggers = document.querySelectorAll('.download-trigger, #detected-download-btn');
     triggers.forEach(btn => {
+      btn.setAttribute('target', 'download_target_frame');
       btn.addEventListener('click', () => {
         const filename = btn.getAttribute('download') || btn.dataset.filename || 'el paquete';
-        showToast(`Iniciando descarga directa de ${filename}`);
+        showToast(`Descargando ${filename} directamente...`);
       });
     });
   }
