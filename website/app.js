@@ -6,6 +6,15 @@
 (() => {
   'use strict';
 
+  // SVG Icons Minimalistas
+  const ICONS = {
+    mobile: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
+    tv: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="13" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>',
+    linux: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    windows: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801"/></svg>',
+    desktop: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
+  };
+
   // Hashes oficiales verificados v1.0.0
   const OFFICIAL_HASHES = {
     '41538c2b6b166c892cab7e708a25c7201f9cf735ba21ad80c96bdec5a176a1a3': {
@@ -43,21 +52,21 @@
         return {
           id: 'tv',
           name: 'Smart TV & Android TV',
-          icon: '📺',
+          iconSvg: ICONS.tv,
           arch: 'Universal APK',
           btnLabel: 'Descargar APK TV (129 MB)',
           url: DOWNLOAD_URLS.tv,
-          meta: 'Formato: Leanback APK • D-Pad Remote Ready • 129 MB'
+          meta: 'Formato: Leanback APK &bull; D-Pad Remote Ready &bull; 129 MB'
         };
       }
       return {
         id: 'mobile',
         name: 'Android Móvil & Tablet',
-        icon: '📱',
+        iconSvg: ICONS.mobile,
         arch: 'Universal APK',
         btnLabel: 'Descargar APK Móvil (129 MB)',
         url: DOWNLOAD_URLS.mobile,
-        meta: 'Formato: APK Universal • Android 12 - 15 • 129 MB'
+        meta: 'Formato: APK Universal &bull; Android 12 - 15 &bull; 129 MB'
       };
     }
 
@@ -65,11 +74,11 @@
       return {
         id: 'windows',
         name: 'Windows 10 / 11 (64-bit)',
-        icon: '🪟',
+        iconSvg: ICONS.windows,
         arch: 'x64 Portable',
         btnLabel: 'Descargar Veyra Windows (343 MB)',
         url: DOWNLOAD_URLS.windows,
-        meta: 'Formato: Portable Zip • SMTC Media Ready • 343 MB'
+        meta: 'Formato: Portable Zip &bull; SMTC Media Ready &bull; 343 MB'
       };
     }
 
@@ -77,11 +86,11 @@
       return {
         id: 'linux',
         name: 'Linux Desktop (Wayland / X11)',
-        icon: '🐧',
+        iconSvg: ICONS.linux,
         arch: 'x86_64',
         btnLabel: 'Descargar Veyra Linux (394 MB)',
         url: DOWNLOAD_URLS.linux,
-        meta: 'Formato: Standalone Tar.gz • C++/Rust DSP Nativo • 394 MB'
+        meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 394 MB'
       };
     }
 
@@ -89,11 +98,11 @@
     return {
       id: 'linux',
       name: 'Linux Desktop (x86_64)',
-      icon: '🐧',
+      iconSvg: ICONS.linux,
       arch: 'x86_64',
       btnLabel: 'Descargar Veyra Linux (394 MB)',
       url: DOWNLOAD_URLS.linux,
-      meta: 'Formato: Standalone Tar.gz • C++/Rust DSP Nativo • 394 MB'
+      meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 394 MB'
     };
   }
 
@@ -106,13 +115,13 @@
     const btnLabelEl = document.getElementById('detected-btn-label');
     const metaEl = document.getElementById('detected-file-meta');
 
-    if (iconEl) iconEl.textContent = detected.icon;
+    if (iconEl && detected.iconSvg) iconEl.innerHTML = detected.iconSvg;
     if (nameEl) nameEl.textContent = detected.name;
     if (archEl) archEl.textContent = detected.arch;
     if (btnEl) btnEl.href = detected.url;
     if (btnLabelEl) btnLabelEl.textContent = detected.btnLabel;
     if (metaEl) {
-      metaEl.innerHTML = `<span>${detected.meta}</span> • <span>Verificado criptográficamente</span> • <span>Sin telemetría</span>`;
+      metaEl.innerHTML = `<span>${detected.meta}</span> <span class="meta-separator">&bull;</span> <span>Verificado criptográficamente</span> <span class="meta-separator">&bull;</span> <span>Sin telemetría</span>`;
     }
   }
 
@@ -170,7 +179,7 @@
 
         try {
           await navigator.clipboard.writeText(hash);
-          showToast('✓ Hash SHA-256 copiado al portapapeles');
+          showToast('Firma SHA-256 copiada al portapapeles');
         } catch {
           // Fallback para contextos sin clipboard API
           const tempInput = document.createElement('input');
@@ -179,7 +188,7 @@
           tempInput.select();
           document.execCommand('copy');
           document.body.removeChild(tempInput);
-          showToast('✓ Hash SHA-256 copiado');
+          showToast('Firma SHA-256 copiada');
         }
       });
     });
@@ -197,9 +206,12 @@
         if (!box) return;
 
         const isHidden = box.classList.toggle('is-hidden');
-        btn.textContent = isHidden 
-          ? (targetId.includes('tv') ? 'Guía de Instalación en TV (ADB)' : targetId.includes('linux') ? 'Comando Terminal de Inicio' : 'Instrucciones de Ejecución')
-          : 'Ocultar Instrucciones';
+        const textSpan = btn.querySelector('span');
+        if (textSpan) {
+          textSpan.textContent = isHidden 
+            ? (targetId.includes('tv') ? 'Guía de instalación en TV (ADB)' : targetId.includes('linux') ? 'Comando de ejecución' : 'Instrucciones de uso')
+            : 'Ocultar instrucciones';
+        }
       });
     });
   }
@@ -227,10 +239,16 @@
 
       if (match) {
         resultBox.className = 'verify-result is-valid';
-        resultBox.innerHTML = `✅ <strong>Hash Oficial Verificado:</strong> Corresponde legítimamente a <strong>${match.file}</strong> (${match.platform}, ${match.size}). Compilación oficial auténtica de AKASHI DEV.`;
+        resultBox.innerHTML = `
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          <div><strong>Firma oficial verificada:</strong> Corresponde a <strong>${match.file}</strong> (${match.platform}, ${match.size}). Compilación oficial auténtica de AKASHI DEV.</div>
+        `;
       } else {
         resultBox.className = 'verify-result is-invalid';
-        resultBox.innerHTML = `⚠️ <strong>Hash no coincide con la versión oficial:</strong> El hash ingresado no corresponde a ningún paquete oficial de la versión v1.0.0. Verifica que hayas descargado el archivo íntegro y sin alteraciones.`;
+        resultBox.innerHTML = `
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div><strong>La firma no coincide:</strong> El hash ingresado no corresponde a ningún paquete oficial de la versión v1.0.0. Verifica la integridad del archivo descargado.</div>
+        `;
       }
     }
 
@@ -244,11 +262,9 @@
    * 6. Generador de Código QR Autónomo para Descarga Móvil
    * ------------------------------------------------------------------------- */
   function generateQrMatrix(text) {
-    // Generador de matriz de patrón QR estilizado de alta densidad sin dependencias externas
     const size = 25;
     const matrix = Array.from({ length: size }, () => Array(size).fill(0));
 
-    // Añadir patrones de posicionamiento estándar (Finder patterns 7x7)
     function addFinder(startX, startY) {
       for (let y = 0; y < 7; y++) {
         for (let x = 0; x < 7; x++) {
@@ -263,7 +279,6 @@
     addFinder(size - 7, 0);
     addFinder(0, size - 7);
 
-    // Semilla determinística basada en el texto para los datos del cuerpo
     let seed = 0;
     for (let i = 0; i < text.length; i++) {
       seed = (seed * 31 + text.charCodeAt(i)) >>> 0;
@@ -350,7 +365,6 @@
     let phase = 0;
     let isVisible = true;
 
-    // Pausar cuando la pestaña esté oculta para ahorrar batería, CPU y RAM
     document.addEventListener('visibilitychange', () => {
       isVisible = !document.hidden;
       if (isVisible && !animationFrameId) {
@@ -382,8 +396,8 @@
       const centerY = height / 2;
       phase += 0.035;
 
-      // Dibujar cuadrícula sutil de telemetría de estudio
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      // Cuadrícula sutil de telemetría técnica
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
       ctx.lineWidth = 1;
       const step = 40 * (window.devicePixelRatio || 1);
       for (let x = 0; x < width; x += step) {
@@ -393,20 +407,20 @@
         ctx.stroke();
       }
 
-      // Dibujar onda secundaria difusa (aura ambiental)
+      // Onda ambiental difusa
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(30, 108, 235, 0.35)';
-      ctx.lineWidth = 3 * (window.devicePixelRatio || 1);
+      ctx.strokeStyle = 'rgba(30, 108, 235, 0.3)';
+      ctx.lineWidth = 2.5 * (window.devicePixelRatio || 1);
       for (let x = 0; x < width; x += 4) {
         const normX = x / width;
         const envelope = Math.sin(normX * Math.PI);
-        const y = centerY + Math.sin(normX * 14 + phase * 0.8) * Math.cos(normX * 8 - phase * 0.5) * (height * 0.28) * envelope;
+        const y = centerY + Math.sin(normX * 14 + phase * 0.8) * Math.cos(normX * 8 - phase * 0.5) * (height * 0.26) * envelope;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
 
-      // Dibujar onda principal activa (Sky Flare)
+      // Onda principal
       ctx.beginPath();
       const gradient = ctx.createLinearGradient(0, 0, width, 0);
       gradient.addColorStop(0, '#1E6CEB');
@@ -416,17 +430,17 @@
       ctx.strokeStyle = gradient;
       ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
       ctx.shadowColor = '#38BDF8';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 8;
 
       for (let x = 0; x < width; x += 3) {
         const normX = x / width;
         const envelope = Math.sin(normX * Math.PI);
-        const y = centerY + Math.sin(normX * 18 + phase) * Math.cos(normX * 6 + phase * 0.4) * (height * 0.35) * envelope;
+        const y = centerY + Math.sin(normX * 18 + phase) * Math.cos(normX * 6 + phase * 0.4) * (height * 0.32) * envelope;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
-      ctx.shadowBlur = 0; // reset shadow
+      ctx.shadowBlur = 0;
 
       animationFrameId = requestAnimationFrame(renderWave);
     }

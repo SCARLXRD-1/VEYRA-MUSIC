@@ -1,4 +1,4 @@
-# 🌐 Veyra Music — Portal Web Oficial de Descargas Directas
+# Veyra Music — Portal Web Oficial de Descargas Directas
 
 **Sello:** AKASHI DEV  
 **Diseño:** Enterprise Slate & Obsidian Industrial  
@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Capacidades del Portal
+## Capacidades del Portal
 
 1. **Detección Automática de Sistema Operativo:**
    - Detecta si el visitante navega desde **Android Móvil**, **Smart TV / Android TV**, **Linux x64** o **Windows 10/11**.
@@ -26,7 +26,7 @@
 
 ---
 
-## 🛠️ Cómo Probar o Servir Localmente
+## Cómo Probar o Servir Localmente
 
 Para visualizar el portal en tu navegador:
 
@@ -35,12 +35,12 @@ Para visualizar el portal en tu navegador:
 xdg-open website/index.html
 
 # Opción 2: Usar cualquier servidor estático ligero en puerto 8080
-python3 -m http.server 8080 --directory website
+npm run serve:website
 ```
 
 ---
 
-## 🚢 Despliegue en la Nube
+## Despliegue en la Nube
 
 El directorio `website/` es totalmente autónomo y estático. Puede desplegarse en un solo clic en:
 - **Cloudflare Pages:** Establecer el directorio raíz de salida en `website`.
