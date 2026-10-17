@@ -1,0 +1,2 @@
+ef42b345dcfaded8cd7495b695f395482db04dbcf3fb2667ec930be7dc6218b2  app-release.apk
+c6dfb01ef78927607b4f4ac85ba4eebe8e25c894e3f8deb7a046539676d405f4  latest-android.json
