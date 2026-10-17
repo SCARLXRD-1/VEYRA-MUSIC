@@ -140,7 +140,7 @@
   <string name="player_volume_level">Volumen: %1$d%%</string>
 
   <!-- Google Cast Application ID -->
-  <string name="cast_app_id" translatable="false">DEC44B9D</string>
+  <string name="cast_app_id" translatable="false"></string>
 
   <!-- Library Screen -->
   <string name="library_title">Tu biblioteca</string>

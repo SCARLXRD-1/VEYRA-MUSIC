@@ -40,7 +40,7 @@ class VeyraCastOptionsProvider : OptionsProvider {
             runCatching { context.getString(R.string.cast_app_id).trim() }.getOrNull()
 
         val appId =
-            if (!configured.isNullOrBlank()) {
+            if (!configured.isNullOrBlank() && configured != "DEC44B9D") {
                 configured
             } else {
                 CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID

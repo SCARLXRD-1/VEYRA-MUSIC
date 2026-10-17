@@ -72,13 +72,23 @@ class ChromecastMediaItemConverter(private val streamServer: ChromecastStreamSer
             if (track.artworkUrl.isNotBlank()) put("artworkUrl", track.artworkUrl)
         }
 
+        val castMetadata =
+            com.google.android.gms.cast.MediaMetadata(com.google.android.gms.cast.MediaMetadata.MEDIA_TYPE_MUSIC_TRACK).apply {
+                if (track.title.isNotBlank()) putString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE, track.title)
+                if (track.artist.isNotBlank()) putString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST, track.artist)
+                if (track.album.isNotBlank()) putString(com.google.android.gms.cast.MediaMetadata.KEY_ALBUM_TITLE, track.album)
+                if (track.artworkUrl.isNotBlank()) {
+                    runCatching { addImage(com.google.android.gms.common.images.WebImage(android.net.Uri.parse(track.artworkUrl))) }
+                }
+            }
+
         val enrichedMedia =
             MediaInfo.Builder(defaultMedia.contentId)
                 // Keep the playable URL when rebuilding MediaInfo; contentId is only the track ID.
                 .setContentUrl(castUrl)
                 .setStreamType(defaultMedia.streamType)
                 .setContentType(defaultMedia.contentType)
-                .setMetadata(defaultMedia.metadata)
+                .setMetadata(castMetadata)
                 .setStreamDuration(defaultMedia.streamDuration)
                 .setCustomData(customData)
                 .build()

@@ -32,15 +32,19 @@ import dev.sfg.veyra.mobile.model.Track
 
 /** Converts provider-neutral tracks to Media3 items without persisting stream URLs. */
 object MediaItemMapper {
-    private const val SCHEME = "orchard"
+    private const val SCHEME = "veyra"
+    private const val LEGACY_SCHEME = "orchard"
     private const val AUDIO_AUTHORITY = "stream"
     private const val VIDEO_AUTHORITY = "video"
-    private const val TRACK_JSON = "orchard.track.json"
+    private const val TRACK_JSON = "veyra.track.json"
+    private const val LEGACY_TRACK_JSON = "orchard.track.json"
 
     fun toMediaItem(track: Track, videoId: String = ""): MediaItem {
         val storedTrack = track.copy(musicVideoId = track.musicVideoId.ifBlank { videoId })
+        val trackJson = dev.sfg.veyra.mobile.model.CatalogJson.track(storedTrack).toString()
         val extras = Bundle().apply {
-            putString(TRACK_JSON, dev.sfg.veyra.mobile.model.CatalogJson.track(storedTrack).toString())
+            putString(TRACK_JSON, trackJson)
+            putString(LEGACY_TRACK_JSON, trackJson)
             putBoolean("explicit", track.explicit)
         }
         val metadata = MediaMetadata.Builder()
@@ -70,6 +74,7 @@ object MediaItemMapper {
 
     fun toTrack(item: MediaItem): Track {
         val json = item.mediaMetadata.extras?.getString(TRACK_JSON)
+            ?: item.mediaMetadata.extras?.getString(LEGACY_TRACK_JSON)
         if (!json.isNullOrBlank()) {
             runCatching { return dev.sfg.veyra.mobile.model.CatalogJson.track(org.json.JSONObject(json)) }
         }
@@ -86,9 +91,11 @@ object MediaItemMapper {
     }
 
     fun isOrchardUri(uri: Uri): Boolean =
-        uri.scheme == SCHEME && (uri.host == AUDIO_AUTHORITY || uri.host == VIDEO_AUTHORITY)
+        (uri.scheme == SCHEME || uri.scheme == LEGACY_SCHEME) &&
+            (uri.host == AUDIO_AUTHORITY || uri.host == VIDEO_AUTHORITY)
 
-    fun isVideoUri(uri: Uri?): Boolean = uri?.scheme == SCHEME && uri.host == VIDEO_AUTHORITY
+    fun isVideoUri(uri: Uri?): Boolean =
+        uri != null && (uri.scheme == SCHEME || uri.scheme == LEGACY_SCHEME) && uri.host == VIDEO_AUTHORITY
 
     fun sourceId(uri: Uri): String = uri.lastPathSegment.orEmpty()
 
@@ -106,8 +113,10 @@ object MediaItemMapper {
     fun withMusicVideoId(item: MediaItem, videoId: String): MediaItem {
         if (videoId.isBlank()) return item
         val track = toTrack(item).copy(musicVideoId = videoId)
+        val trackJson = dev.sfg.veyra.mobile.model.CatalogJson.track(track).toString()
         val extras = Bundle(item.mediaMetadata.extras ?: Bundle()).apply {
-            putString(TRACK_JSON, dev.sfg.veyra.mobile.model.CatalogJson.track(track).toString())
+            putString(TRACK_JSON, trackJson)
+            putString(LEGACY_TRACK_JSON, trackJson)
         }
         return item.buildUpon()
             .setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build())

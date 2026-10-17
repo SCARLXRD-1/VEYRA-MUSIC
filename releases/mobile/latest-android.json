@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "codename": "AKASHI DEV",
-  "versionCode": 1,
-  "apkUrl": "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk",
-  "sha256": "79eea24a888cc99de6aad1a26bc4d5fbca7d03b6de027464d478cd5700e09510",
-  "publishedAt": "2026-10-17T07:19:17Z",
-  "releaseNotes": "## Veyra Music 1.0.0 — AKASHI DEV\n\n- Primera versión de producción oficial de Veyra Music para Android Móvil y Smart TV.\n- Sistema de diseño Enterprise Slate & Obsidian Industrial con paridad absoluta con Desktop.\n- Smart WSOLA Crossfade con detección predictiva de transitorios.\n- Ecualizador paramétrico de 10 bandas y audio bit-perfect.\n- Rendimiento optimizado a 120 FPS sin recolección de basura continua (Zero GC Allocation)."
+  "versionCode": 2,
+  "apkUrl": "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk",
+  "sha256": "ef42b345dcfaded8cd7495b695f395482db04dbcf3fb2667ec930be7dc6218b2",
+  "publishedAt": "2026-10-17T17:42:30Z",
+  "releaseNotes": "Se arreglaron unos bugs y errores menores."
 }
