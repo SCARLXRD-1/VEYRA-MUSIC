@@ -76,6 +76,7 @@ import dev.sfg.veyra.mobile.ui.modifiers.tactilePress
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 import dev.sfg.veyra.mobile.ui.theme.legibleOnDarkChrome
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 
 /**
  * Ergonomic transport controls row providing direct access to Previous,
@@ -130,6 +131,10 @@ fun PlayerTransportControls(
         Box(
             modifier = Modifier
                 .size(52.dp)
+                .tvFocusable(shape = CircleShape, scale = 1.12f, onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onPrevious()
+                })
                 .clip(CircleShape)
                 .background(Color(0xFF090D17))
                 .border(1.dp, transportSlotBorder, CircleShape),
@@ -170,6 +175,10 @@ fun PlayerTransportControls(
         Box(
             modifier = Modifier
                 .size(52.dp)
+                .tvFocusable(shape = CircleShape, scale = 1.12f, onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onNext()
+                })
                 .clip(CircleShape)
                 .background(Color(0xFF090D17))
                 .border(1.dp, transportSlotBorder, CircleShape),
@@ -271,7 +280,9 @@ private fun HeroPlayButton(
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(84.dp),
+        modifier = Modifier
+            .size(84.dp)
+            .tvFocusable(shape = CircleShape, scale = 1.08f, onClick = onClick),
     ) {
         if (isPlaying) {
             // Halo exterior lento (capa profunda)
@@ -420,6 +431,7 @@ private fun TransportToggleOption(
         Box(
             modifier = Modifier
                 .size(42.dp)
+                .tvFocusable(shape = CircleShape, scale = 1.15f, onClick = if (enabled) onClick else null)
                 .clip(CircleShape)
                 .background(Color(0xFF080C14))
                 .border(

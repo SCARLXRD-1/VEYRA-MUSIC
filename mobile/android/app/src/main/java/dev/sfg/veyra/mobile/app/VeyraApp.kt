@@ -171,11 +171,14 @@ fun VeyraApp(viewModel: VeyraViewModel) {
     val currentAccent = LocalAccent.current
     val effectiveAccent = if (settings.frostedGlass) glassTint.value else currentAccent
 
+    val isTv = dev.sfg.veyra.mobile.ui.tv.isTvMode()
+
     CompositionLocalProvider(
         LocalGlass provides glass,
         LocalGlassScene provides glassScene,
         LocalAccent provides effectiveAccent,
         LocalOverscrollFactory provides VeyraScrollPhysics.overscrollFactory,
+        dev.sfg.veyra.mobile.ui.tv.LocalIsTv provides isTv,
     ) {
         Scaffold(
             // Transparent so the artwork wash below shows through every screen.
@@ -201,7 +204,7 @@ fun VeyraApp(viewModel: VeyraViewModel) {
                     modifier = Modifier.glassWashSource(glassScene),
                 )
 
-                val isFoldable = dev.sfg.veyra.mobile.ui.foldable.isFoldableOrWideLayout()
+                val isWideLayout = dev.sfg.veyra.mobile.ui.foldable.isFoldableOrWideLayout() || isTv
                 val isObsidianHud = settings.playerMode == MobilePlayerMode.OBSIDIAN && !chromeHidden && playerPlayback.currentTrack != null
                 val targetHudTopInset = if (isObsidianHud) 124.dp else 0.dp
                 val hudTopInset by animateDpAsState(
@@ -210,7 +213,7 @@ fun VeyraApp(viewModel: VeyraViewModel) {
                     label = "HudTopInset",
                 )
                 val safeHudTopInset = hudTopInset.coerceAtLeast(0.dp)
-                val contentModifier = if (isFoldable && !chromeHidden) {
+                val contentModifier = if (isWideLayout && !chromeHidden) {
                     Modifier
                         .fillMaxSize()
                         .padding(start = dev.sfg.veyra.mobile.ui.foldable.FoldableNavRailWidth)
@@ -229,9 +232,9 @@ fun VeyraApp(viewModel: VeyraViewModel) {
             }
 
             Box(Modifier.fillMaxSize()) {
-                val isFoldable = dev.sfg.veyra.mobile.ui.foldable.isFoldableOrWideLayout()
+                val isWideLayout = dev.sfg.veyra.mobile.ui.foldable.isFoldableOrWideLayout() || isTv
                 if (!chromeHidden) {
-                    if (isFoldable) {
+                    if (isWideLayout) {
                         dev.sfg.veyra.mobile.ui.foldable.VeyraNavigationRail(
                             currentRoute = route,
                             onSelect = { navController.openTopLevel(it) },

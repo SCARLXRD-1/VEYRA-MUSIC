@@ -89,6 +89,7 @@ import dev.sfg.veyra.mobile.ui.glass.glassFill
 import dev.sfg.veyra.mobile.ui.glass.glassPane
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 
 @Composable
 fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
@@ -151,11 +152,11 @@ fun CatalogCard(item: CatalogItem, onClick: () -> Unit, modifier: Modifier = Mod
     val cornerRadius = if (isArtist) 999.dp else 14.dp
     val artworkRadius = if (isArtist) 999 else 14
     val haptics = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(cornerRadius)
     Column(
         modifier = modifier
             .width(140.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = {
+            .tvFocusable(shape = shape, onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }),
@@ -221,12 +222,11 @@ fun CategoryCard(
     Surface(
         modifier = modifier
             .height(52.dp)
-            .glassPane(shape, GlassTone.CONTROL)
-            .clip(shape)
-            .clickable(onClick = {
+            .tvFocusable(shape = shape, onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
-            }),
+            })
+            .glassPane(shape, GlassTone.CONTROL),
         color = glassFill(CanopyColors.Surface),
         shape = shape,
     ) {
@@ -264,12 +264,12 @@ fun TopPickCard(item: CatalogItem, onClick: () -> Unit, modifier: Modifier = Mod
         modifier
             .width(200.dp)
             .aspectRatio(0.85f)
-            .clip(shape)
-            .border(BorderStroke(1.dp, CanopyColors.Rule), shape)
-            .clickable(onClick = {
+            .tvFocusable(shape = shape, onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
-            }),
+            })
+            .clip(shape)
+            .border(BorderStroke(1.dp, CanopyColors.Rule), shape),
     ) {
         ArtworkTile(item.artworkUrl, item.title, Modifier.fillMaxSize(), 0)
         Box(
@@ -445,18 +445,19 @@ fun TrackRow(
         )
     }
 
+    val rowShape = RoundedCornerShape(if (compact) 8.dp else 10.dp)
     Column(modifier = modifier.fillMaxWidth()) {
         Surface(
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onPlay()
-            },
             color = bgColor,
-            shape = RoundedCornerShape(if (compact) 8.dp else 10.dp),
+            shape = rowShape,
             border = if (highlighted) BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f)) else null,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 1.dp)
+                .tvFocusable(shape = rowShape, onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onPlay()
+                })
         ) {
             Row(
                 Modifier.padding(horizontal = 8.dp, vertical = verticalPad),
@@ -623,6 +624,10 @@ fun <T> OrchardFilterChips(
                 border = if (isSelected) activeBorder else inactiveBorder,
                 modifier = Modifier
                     .height(34.dp)
+                    .tvFocusable(shape = CircleShape, scale = 1.08f, onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSelect(option)
+                    })
                     .shadow(
                         elevation = if (isSelected) 4.dp else 2.dp,
                         shape = CircleShape,

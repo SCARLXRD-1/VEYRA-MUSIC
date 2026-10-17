@@ -133,6 +133,39 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        when (keyCode) {
+            android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+            android.view.KeyEvent.KEYCODE_HEADSETHOOK -> {
+                viewModel.togglePlayback()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                if (!viewModel.playback.value.isPlaying) {
+                    viewModel.togglePlayback()
+                }
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                if (viewModel.playback.value.isPlaying) {
+                    viewModel.togglePlayback()
+                }
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_MEDIA_NEXT,
+            android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                viewModel.next()
+                return true
+            }
+            android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+            android.view.KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                viewModel.previous()
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -140,3 +173,4 @@ class MainActivity : FragmentActivity() {
         }
     }
 }
+

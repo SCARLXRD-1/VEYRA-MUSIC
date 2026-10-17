@@ -113,6 +113,7 @@ import dev.sfg.veyra.connect.R
 import dev.sfg.veyra.mobile.ui.glass.LocalGlass
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 import java.util.Calendar
 
 private data class QuickGridItem(
@@ -1033,10 +1034,6 @@ private fun QuickGridCard(
     )
     val haptics = LocalHapticFeedback.current
     Surface(
-        onClick = {
-            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            item.onClick()
-        },
         shape = shape,
         color = Color.Transparent,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
@@ -1044,6 +1041,10 @@ private fun QuickGridCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(58.dp)
+            .tvFocusable(shape = shape) {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                item.onClick()
+            }
             .clip(shape)
             .background(cardBrush),
     ) {
@@ -1120,9 +1121,9 @@ private fun FeaturedHeroCarousel(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .tvFocusable(shape = shape) { onClick(item) }
                     .clip(shape)
                     .border(BorderStroke(1.dp, CanopyColors.Rule), shape)
-                    .clickable { onClick(item) }
             ) {
                 // Background Artwork
                 ArtworkTile(
@@ -1250,9 +1251,9 @@ private fun GlassSquircleCard(
         modifier = Modifier
             .width(140.dp)
             .aspectRatio(1f)
+            .tvFocusable(shape = shape, onClick = onClick)
             .clip(shape)
             .border(BorderStroke(1.dp, CanopyColors.Rule), shape)
-            .clickable(onClick = onClick)
     ) {
         ArtworkTile(item.artworkUrl, item.title, Modifier.fillMaxSize(), 0)
 
@@ -1322,13 +1323,13 @@ private fun GlassJumpBackInCard(
 ) {
     val shape = RoundedCornerShape(14.dp)
     Surface(
-        onClick = onClick,
         shape = shape,
         color = CanopyColors.Surface,
         border = BorderStroke(1.dp, CanopyColors.Rule),
         modifier = Modifier
             .width(220.dp)
-            .height(68.dp),
+            .height(68.dp)
+            .tvFocusable(shape = shape, onClick = onClick),
     ) {
         Row(
             modifier = Modifier
@@ -1397,7 +1398,7 @@ private fun GlassRecentlyPlayedCard(
     Column(
         modifier = Modifier
             .width(120.dp)
-            .clickable(onClick = onClick)
+            .tvFocusable(shape = shape, onClick = onClick)
     ) {
         Box(
             modifier = Modifier
@@ -1509,7 +1510,11 @@ private fun HomeSectionHeader(
 @Composable
 private fun PlaylistCard(item: CatalogItem, onClick: () -> Unit) {
     val shape = RoundedCornerShape(14.dp)
-    Column(modifier = Modifier.width(140.dp).clickable(onClick = onClick)) {
+    Column(
+        modifier = Modifier
+            .width(140.dp)
+            .tvFocusable(shape = shape, onClick = onClick)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1545,7 +1550,7 @@ private fun CircularArtistCard(item: CatalogItem, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .width(88.dp)
-            .clickable(onClick = onClick),
+            .tvFocusable(shape = CircleShape, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -1613,12 +1618,14 @@ private fun RankedSongRow(
         )
     }
 
+    val rowShape = RoundedCornerShape(10.dp)
     Surface(
-        onClick = onPlay,
         color = Color.Transparent,
+        shape = rowShape,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .tvFocusable(shape = rowShape, onClick = onPlay),
     ) {
         Row(
             modifier = Modifier

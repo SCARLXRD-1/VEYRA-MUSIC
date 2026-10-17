@@ -86,6 +86,8 @@ import dev.sfg.veyra.mobile.ui.navigation.Routes
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 
+import dev.sfg.veyra.mobile.ui.tv.tvNavRailFocusable
+
 data class RailDestination(val route: String, val labelRes: Int, val icon: ImageVector)
 
 private val foldableDestinations = listOf(
@@ -163,16 +165,14 @@ fun VeyraNavigationRail(
                 .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Arriba: logo de Veyra Music
+            // Arriba: logo de Veyra Music navegable por D-Pad
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(bounded = true, radius = 24.dp),
-                        onClick = { onSelect(Routes.HOME) },
-                    ),
+                    .tvNavRailFocusable(isSelected = false, shape = CircleShape) {
+                        onSelect(Routes.HOME)
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 OrchardMark(Modifier.size(34.dp))
@@ -214,13 +214,14 @@ fun VeyraNavigationRail(
                     }
 
                     Surface(
-                        onClick = { onSelect(destination.route) },
                         shape = RoundedCornerShape(16.dp),
                         color = pillBg,
                         border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)) else null,
                         modifier = Modifier
                             .size(width = 62.dp, height = 54.dp)
-                            .scale(1f + 0.04f * activeProgress),
+                            .tvNavRailFocusable(isSelected = isSelected, shape = RoundedCornerShape(16.dp)) {
+                                onSelect(destination.route)
+                            },
                     ) {
                         Column(
                             modifier = Modifier.fillMaxSize(),

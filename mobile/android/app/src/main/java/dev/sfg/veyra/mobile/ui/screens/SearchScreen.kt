@@ -101,6 +101,7 @@ import dev.sfg.veyra.mobile.ui.glass.glassFill
 import dev.sfg.veyra.mobile.ui.glass.glassPane
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 
 import androidx.compose.ui.res.stringResource
 import dev.sfg.veyra.connect.R
@@ -284,6 +285,10 @@ private fun SearchCategoryChip(
     Surface(
         modifier = modifier
             .height(46.dp)
+            .tvFocusable(shape = chipShape, scale = 1.05f, onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            })
             .shadow(3.dp, chipShape, spotColor = Color.Black.copy(alpha = 0.50f))
             .clip(chipShape)
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)), chipShape)
@@ -366,6 +371,11 @@ private fun LazyListScope.history(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp)
+                .tvFocusable(shape = itemShape, scale = 1.02f, onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onQueryChange(value)
+                    onSearch(value)
+                })
                 .clip(itemShape)
                 .clickable {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
