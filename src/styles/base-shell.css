@@ -80,11 +80,11 @@
   --radius-pill: 999px;
 
   /* Glassmorphism Presets */
-  --glass-bg: rgba(19, 27, 43, 0.82);
-  --glass-bg-elevated: rgba(19, 27, 43, 0.94);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(16px);
-  --glass-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --glass-bg: rgba(19, 27, 43, 0.72);
+  --glass-bg-elevated: rgba(19, 27, 43, 0.86);
+  --glass-border: 1px solid rgba(226, 239, 255, 0.12);
+  --glass-blur: blur(22px) saturate(1.3);
+  --glass-shadow: 0 22px 58px -14px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.045), inset 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .color1 { color: #1E6CEB; }

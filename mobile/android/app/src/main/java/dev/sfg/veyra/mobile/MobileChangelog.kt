@@ -24,30 +24,61 @@
 package dev.sfg.veyra.mobile
 
 import dev.sfg.veyra.connect.BuildConfig
+import dev.sfg.veyra.mobile.i18n.AppLocale
 
-/** Changelog incluido y notas de la versión actual de Veyra Music Mobile. */
+/** Changelog incluido y notas de la versión actual de Veyra Music Mobile (Español / Inglés). */
 object MobileChangelog {
     const val CURRENT_VERSION = BuildConfig.VERSION_NAME
     const val CURRENT_CODENAME = BuildConfig.CODENAME
 
-    val CURRENT_RELEASE_NOTES =
+    val RELEASE_NOTES_ES =
         """
-        ### Added
-        - **Desktop Transition Parity**: Mobile now runs the shared desktop transition planner with the same cue selection, tempo ratios, choreography, and fallback policy, backed by generated parity fixtures.
-        - **Cache Controls**: Added cache size reporting and a confirmation flow to clear temporary artwork, audio, network, and stream caches without touching downloads or library data.
-        - **Artist Actions**: Added artist credits in playback and follow/unfollow controls from artist and track surfaces.
+        ### Novedades
+        - **Efecto Cristal Esmerilado Universal**: Compatibilidad total en toda la app desde Android 7.0 hasta Android 15, con renderizado neo-glassmórfico optimizado en Ajustes, Dispositivos, Biblioteca y Búsqueda.
+        - **Chromecast con Identidad Veyra**: Animación de pulso elástico («Conectando con Veyra Music...»), isotipo oficial y píldora de estado de transmisión en vivo.
+        - **Reproducción Secuencial de Descargas**: Al reproducir una canción descargada, la lista completa se encola en orden a partir de ella, con controles directos de «Reproducir todo» y «Aleatorio».
+        - **Descarga Automática al Reproducir**: Nueva preferencia en Ajustes para descargar automáticamente al almacenamiento local cada pista reproducida.
 
-        ### Changed
-        - **Listening Experience**: Refined Home, Library, detail, queue, now-playing, lyrics, device, integration, and settings screens with consistent responsive surfaces and bundled Inter typography.
-        - **Beat Analysis**: Shipped the official `final0` Beat This dynamic INT8 model with fixed 1500-frame windows, CPU execution, versioned extraction, and bounded audio work.
-        - **Crossfade Engine**: Shared transition planning now preserves selected cues, tempo ratios, choreography, and fallback behavior while rendered playback keeps its full-song source clock.
+        ### Cambios
+        - **Experiencia Sonora y Visual**: Refinamiento estético en Obsidian Slate y Azul Eléctrico con indicador activo en canciones descargadas.
+        - **Gestión de Cola Offline**: Protección de autoplay para no inyectar streaming de YouTube Music al reproducir descargas.
+        - **Rendimiento de Renderizado**: Optimización de transiciones y degradados con aceleración por hardware.
 
-        ### Fixed
-        - **Rendered Crossfades**: Stabilized transition handoffs, preserved source position and duration, and prevented competing analysis and render jobs from disturbing playback timing.
+        ### Correcciones
+        - **Estabilidad de Glassmorphism**: Corrección de fallos en dispositivos sin soporte de shaders de desenfoque de hardware (Android 7.0–11).
 
-        ### Maintenance
-        - **Android Runtime**: Updated to stock ONNX Runtime Android 1.29.0, kept production APKs ARM64-only, and removed the experimental QNN/HTP packaging path after benchmark validation.
-        - **Testing & Tooling**: Added transition parity, timeline, work-limiter, cache, and UI tests plus Beat This quantization and accuracy benchmarks.
+        ### Mantenimiento
+        - **Arquitectura de Audio**: Sincronización continua de motores WSOLA y modelos INT8 de seguimiento de ritmo.
+        - **Localización Bilingüe**: Notas de versión y textos completamente adaptados en Español e Inglés.
         """
             .trimIndent()
+
+    val RELEASE_NOTES_EN =
+        """
+        ### Added
+        - **Universal Frosted Glass Effect**: Full compatibility across the app from Android 7.0 to Android 15, with optimized neo-glassmorphic rendering in Settings, Devices, Library, and Search.
+        - **Veyra Identity Chromecast**: Smooth elastic pulse animation ("Connecting with Veyra Music..."), official glyph, and live streaming status pill.
+        - **Sequential Offline Downloads Playback**: Tapping any downloaded track enqueues the complete downloaded songs list in order, with direct "Play All" and "Shuffle" controls.
+        - **Auto-Download on Playback**: New setting in Audio preferences to automatically save streamed tracks to local storage.
+
+        ### Changed
+        - **Acoustic & Visual Experience**: Refined Obsidian Slate and Electric Blue styling with dynamic playing indicator on downloaded tracks.
+        - **Offline Queue Management**: Autoplay guard prevents remote YouTube Music streams from interrupting offline playback.
+        - **Rendering Performance**: Optimized pane transitions and gradients with hardware acceleration.
+
+        ### Fixed
+        - **Glassmorphism Stability**: Resolved blur shader compatibility on devices lacking hardware lens effects (Android 7.0–11).
+
+        ### Maintenance
+        - **Audio Architecture**: Seamless synchronization of WSOLA time-stretch engines and INT8 beat tracking models.
+        - **Bilingual Localization**: Changelogs and interface elements dynamically adapted for English and Spanish.
+        """
+            .trimIndent()
+
+    /** Retorna las notas de versión según el idioma seleccionado por el usuario. */
+    fun getReleaseNotes(isSpanish: Boolean): String =
+        if (isSpanish) RELEASE_NOTES_ES else RELEASE_NOTES_EN
+
+    val CURRENT_RELEASE_NOTES: String
+        get() = getReleaseNotes(AppLocale.isSpanish())
 }

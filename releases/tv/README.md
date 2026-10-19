@@ -6,18 +6,23 @@
 
 ---
 
-## 📦 Especificaciones del Paquete TV
+## 📦 Paquete actual (v1.0.2)
 
-- **Formato:** APK Híbrido Universal Móvil + Android TV (`app-release.apk`)
-- **Min SDK:** Android 9.0 (API 28) / Android 10 (API 29)
-- **Target SDK:** Android 14 (API 34) / Android 15 (API 35)
+- **Formato:** APK Híbrido Universal Móvil + Android TV (`veyramusic.apk`)
+- **Descarga oficial:** `https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk`
+- **SHA-256:** `69129b4c295508b7869444365fe70f5f9c573e3a55db76a05725644524d91da5`
+- **Min SDK:** Android 7.0 (API 24)
+- **Target SDK:** Android 16 (API 36)
+- **Arquitecturas incluidas:** `arm64-v8a` y `armeabi-v7a`
 - **Modo de entrada:** Control remoto D-Pad (Up, Down, Left, Right, OK/Center, Back, Play/Pause) y Touch
 - **Declaraciones de hardware:**
-  - `android.software.leanback` = `false` (compatibilidad universal)
-  - `android.hardware.touchscreen` = `false` (no requerido)
-  - `android.hardware.type.television` = `false`
+  - `android.software.leanback` no requerido (admite instalación manual en dispositivos compatibles)
+  - `android.hardware.touchscreen` no requerido
+  - `android.hardware.type.television` no requerido
   - Banner oficial Leanback: `ic_tv_banner` (320x180 dp)
   - Intent Launcher: `android.intent.category.LEANBACK_LAUNCHER`
+
+La descarga de Smart TV usa el mismo APK universal que Android móvil. Si ya existe una instalación firmada con otra clave, Android puede impedir actualizarla; desinstalarla antes de instalar elimina los datos locales de esa instalación.
 
 ---
 

@@ -13,7 +13,8 @@ import { existsSync } from 'node:fs';
 
 const exec = promisify(execFile);
 const rootDir = process.cwd();
-const version = '1.0.0';
+const rootPkg = JSON.parse(await readFile(path.join(rootDir, 'package.json'), 'utf8'));
+const version = rootPkg.version || '1.0.2';
 const releasesDir = path.join(rootDir, 'releases', 'desktop', 'binaries');
 const stagingAppDir = '/tmp/veyra-desktop-payload';
 
@@ -45,7 +46,6 @@ async function main() {
   await mkdir(stagingAppDir, { recursive: true });
 
   // Custom package.json for production
-  const rootPkg = JSON.parse(await readFile(path.join(rootDir, 'package.json'), 'utf8'));
   const prodPkg = {
     name: 'veyra',
     productName: 'Veyra Music',
@@ -87,6 +87,7 @@ async function main() {
     '--exclude=@rolldown',
     '--exclude=.cache',
     '--exclude=esbuild',
+    '--exclude=.bin',
     'node_modules/',
     path.join(stagingAppDir, 'node_modules/')
   ]);

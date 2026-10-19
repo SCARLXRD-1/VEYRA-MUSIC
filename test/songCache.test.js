@@ -23,7 +23,7 @@
 
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { access, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Writable } from 'node:stream';
@@ -258,6 +258,77 @@ test('downloaded songs serve byte ranges by their library track ID', async () =>
     assert.equal(response.statusCode, 206);
     assert.equal(response.headers['Content-Range'], 'bytes 1-2/4');
     assert.deepEqual(Buffer.concat(response.chunks), Buffer.from([6, 4]));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('download inventory marks truncated files unavailable and refuses to serve them', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'orchard-song-download-truncated-'));
+  const cache = createSongCache({ directory });
+  const request = cacheRequest([1, 2, 3, 4]);
+
+  try {
+    await cache.pipeAndStore(request);
+    await cache.pin('cache-track', { videoId: 'library-track', title: 'Truncated Song' });
+    const metadataName = (await readdir(directory)).find((name) => name.endsWith('.json'));
+    await writeFile(path.join(directory, metadataName), JSON.stringify({
+      videoId: 'library-track',
+      sourceVideoId: 'cache-track',
+      title: 'Truncated Song',
+      downloaded: true,
+      contentLength: 40
+    }));
+
+    const inventory = await cache.list();
+    assert.equal(inventory.downloads.length, 1);
+    assert.equal(inventory.downloads[0].available, false);
+    assert.equal(await cache.findDownloaded('library-track'), null);
+    assert.equal(await cache.serveDownload('library-track', {
+      method: 'GET',
+      headers: {}
+    }, writableHttpResponse()), false);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('download inventory detects same-size corruption with its saved checksum', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'orchard-song-download-checksum-'));
+  const cache = createSongCache({ directory });
+
+  try {
+    await cache.pipeAndStore(cacheRequest([1, 2, 3, 4]));
+    await cache.pin('cache-track', { videoId: 'library-track', title: 'Checksum Song' });
+    const initial = await cache.list();
+    assert.equal(initial.downloads[0].available, true);
+    assert.match(initial.downloads[0].sha256, /^[a-f0-9]{64}$/);
+
+    const audioName = (await readdir(directory)).find((name) => name.endsWith('.bin'));
+    await writeFile(path.join(directory, audioName), Buffer.from([4, 3, 2, 1]));
+    const inventory = await cache.list();
+    assert.equal(inventory.downloads[0].available, false);
+    assert.equal(await cache.findDownloaded('library-track'), null);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('download inventory reports a missing audio file from its metadata sidecar', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'orchard-song-download-missing-'));
+  const cache = createSongCache({ directory });
+
+  try {
+    await cache.pipeAndStore(cacheRequest([1, 2, 3, 4]));
+    await cache.pin('cache-track', { videoId: 'library-track', title: 'Missing Song' });
+    const audioName = (await readdir(directory)).find((name) => name.endsWith('.bin'));
+    await unlink(path.join(directory, audioName));
+
+    const inventory = await cache.list();
+    assert.equal(inventory.downloads.length, 1);
+    assert.equal(inventory.downloads[0].videoId, 'library-track');
+    assert.equal(inventory.downloads[0].available, false);
+    assert.equal(await cache.findDownloaded('library-track'), null);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

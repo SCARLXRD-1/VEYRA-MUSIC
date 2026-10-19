@@ -277,7 +277,7 @@ class UpdateManager(
 
     fun downloadAndInstallUpdate(metadata: MobileUpdateMetadata) {
         val version = metadata.version
-        val apkUrl = metadata.apkUrl.ifBlank { "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v$version/app-release.apk" }
+        val apkUrl = metadata.apkUrl.ifBlank { "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v$version/veyramusic.apk" }
         val fileName = "VeyraMusic-$version.apk"
         val destination = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
 

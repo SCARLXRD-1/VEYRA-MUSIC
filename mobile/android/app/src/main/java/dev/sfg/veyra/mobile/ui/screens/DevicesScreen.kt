@@ -168,9 +168,8 @@ fun DevicesScreen(
     onRenameDevice: (PlaybackDevice, String) -> Unit = { _, _ -> },
     onRemoveDevice: (String) -> Unit = {},
 ) {
-    val plainStyle = remember { GlassStyle(enabled = false) }
     val accent = lerp(LocalAccent.current, Color.White, 0.35f)
-    CompositionLocalProvider(LocalGlass provides plainStyle, LocalAccent provides accent) {
+    CompositionLocalProvider(LocalAccent provides accent) {
         FrostedDevicesScreenContent(
             targets = targets,
             connectMessage = connectMessage,

@@ -101,6 +101,7 @@ export function installSongCacheActions(ctx) {
       mediaKind: 'audio',
       isAudioOnly: true,
       downloaded: true,
+      downloadAvailable: entry.available !== false,
       downloadCollections: entry.collections || []
     };
   }
@@ -138,6 +139,34 @@ export function installSongCacheActions(ctx) {
   ctx.downloadedTrackIds = computed(() =>
     new Set(ctx.downloadedTracks.value.map((track) => track.id).filter(Boolean))
   );
+
+  // When connectivity drops during a downloaded song, line up the rest of the
+  // local library so normal end-of-track handling continues playback offline.
+  ctx.queueRemainingDownloadsForOfflinePlayback = function queueRemainingDownloadsForOfflinePlayback() {
+    const active = ctx.activeTrack.value;
+    if (!ctx.networkOffline.value || !active?.id || !ctx.isTrackDownloaded(active)) return false;
+
+    const downloadedIds = ctx.downloadedTrackIds.value;
+    const queuedIds = new Set([active.id]);
+    const existingDownloadedQueue = ctx.queue.value.filter((track) => {
+      if (!track?.id || !downloadedIds.has(track.id) || track.downloadAvailable === false || queuedIds.has(track.id)) {
+        return false;
+      }
+      queuedIds.add(track.id);
+      return true;
+    });
+    const remaining = ctx.downloadedTracks.value.filter((track) => {
+      if (!track.id || track.downloadAvailable === false || queuedIds.has(track.id) || !ctx.isPlayableTrack(track)) {
+        return false;
+      }
+      queuedIds.add(track.id);
+      return true;
+    });
+    if (!remaining.length && existingDownloadedQueue.length === ctx.queue.value.length) return false;
+
+    ctx.queue.value = [...existingDownloadedQueue, ...remaining];
+    return true;
+  };
 
   ctx.isTrackDownloaded = function isTrackDownloaded(track) {
     return Boolean(track?.id && ctx.downloadedTrackIds.value.has(track.id));
@@ -191,7 +220,10 @@ export function installSongCacheActions(ctx) {
   };
 
   ctx.cachedSongDetails = function cachedSongDetails(entry = {}) {
-    return [entry.artist, entry.downloaded ? 'Downloaded' : '', ctx.formatBytes(entry.size)].filter(Boolean).join(' / ');
+    const status = entry.downloaded
+      ? (entry.available === false ? t('ui.cacheMessages.downloadUnavailable') : t('ui.cacheMessages.downloadReady'))
+      : '';
+    return [entry.artist, status, ctx.formatBytes(entry.size)].filter(Boolean).join(' / ');
   };
 
   ctx.loadSongCacheInventory = async function loadSongCacheInventory() {

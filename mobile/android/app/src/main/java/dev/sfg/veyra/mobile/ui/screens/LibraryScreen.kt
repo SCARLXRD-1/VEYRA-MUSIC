@@ -108,6 +108,7 @@ fun LibraryScreen(
     downloadingTrackIds: Set<String> = emptySet(),
     totalBytesUsed: Long = 0L,
     onPlay: (Track) -> Unit,
+    onPlayQueue: ((List<Track>, Int) -> Unit)? = null,
     onPlayNext: ((Track) -> Unit)?,
     onAddToQueue: ((Track) -> Unit)?,
     onOpenDetail: (String) -> Unit,
@@ -118,10 +119,7 @@ fun LibraryScreen(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
 
-    // Shared library controls use their regular fills, independently of the floating chrome.
-    val plainStyle = remember { GlassStyle(enabled = false) }
-    CompositionLocalProvider(LocalGlass provides plainStyle) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = OrchardChromeHeight)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = OrchardChromeHeight)) {
             item {
                 Column {
                     Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 12.dp)) {
@@ -308,18 +306,19 @@ fun LibraryScreen(
                         downloads = filtered,
                         totalBytesUsed = totalBytesUsed,
                         onPlay = onPlay,
+                        onPlayQueue = onPlayQueue,
                         onRemoveDownload = { id -> onRemoveDownloadTrack?.invoke(id) },
                     )
                 }
             }
         }
-    }
 }
 
 private fun LazyListScope.downloadsList(
     downloads: List<DownloadItem>,
     totalBytesUsed: Long,
     onPlay: (Track) -> Unit,
+    onPlayQueue: ((List<Track>, Int) -> Unit)? = null,
     onRemoveDownload: (String) -> Unit,
 ) {
     val completed = downloads.filter { it.status == DownloadStatus.COMPLETED }
@@ -372,9 +371,16 @@ private fun LazyListScope.downloadsList(
             )
         }
         items(completed, key = { "completed_${it.track.id}" }) { item ->
+            val trackIndex = completed.indexOf(item).coerceAtLeast(0)
             DownloadedTrackRow(
                 item = item,
-                onPlay = { onPlay(item.track) },
+                onPlay = {
+                    if (onPlayQueue != null) {
+                        onPlayQueue(completed.map { it.track }, trackIndex)
+                    } else {
+                        onPlay(item.track)
+                    }
+                },
                 onDelete = { onRemoveDownload(item.track.id) },
             )
         }

@@ -128,7 +128,7 @@ export default {
 </script>
 
 <template>
-  <header class="canopy-bar" :class="{ 'canopy-bar--native': nativeTitlebar }">
+  <header class="canopy-bar" :class="{ 'canopy-bar--native': nativeTitlebar, 'canopy-bar--playing': isPlaying }">
     <div class="canopy-bar__brand">
       <img class="canopy-bar__mark" :src="veyraLogoUrl" alt="Veyra Music" />
     </div>

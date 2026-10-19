@@ -1,2 +1,5 @@
-380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac  veyra-v1.0.0-linux-x64.tar.gz
-b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29  veyra-v1.0.0-windows-x64.zip
+# Veyra Music v1.0.2 Desktop Release Checksums (SHA-256)
+# Sello: AKASHI DEV
+
+0016e72ca6e347d85e97ee50ef52e3bd0c20e8e7ef281dda1ddf8c8ea7ffe73f  veyra-v1.0.2-linux-x64.tar.gz
+fe3ac1a8361eaa11fb17285c570c34fb8a1dbfb861311fc55531747d7e64ac1c  veyra-v1.0.2-windows-x64.zip

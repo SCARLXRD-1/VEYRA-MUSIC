@@ -111,7 +111,9 @@ import dev.sfg.veyra.mobile.ui.components.OrchardChromeHeight
 import dev.sfg.veyra.mobile.ui.components.ReleaseNotesDialog
 import dev.sfg.veyra.mobile.ui.components.UpdateDialog
 import dev.sfg.veyra.mobile.ui.glass.GlassStyle
+import dev.sfg.veyra.mobile.ui.glass.GlassTone
 import dev.sfg.veyra.mobile.ui.glass.LocalGlass
+import dev.sfg.veyra.mobile.ui.glass.glassPane
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 
@@ -162,10 +164,10 @@ fun SettingsScreen(
         onRefreshCacheSize()
     }
 
-    val plainStyle = remember { GlassStyle(enabled = false) }
+    val isGlass = LocalGlass.current.enabled
     val settingsAccent = lerp(LocalAccent.current, Color.White, 0.35f)
-    CompositionLocalProvider(LocalGlass provides plainStyle, LocalAccent provides settingsAccent) {
-        Column(Modifier.fillMaxSize().background(CanopyColors.Chrome)) {
+    CompositionLocalProvider(LocalAccent provides settingsAccent) {
+        Column(Modifier.fillMaxSize().background(if (isGlass) Color.Transparent else CanopyColors.Chrome)) {
             Text(
                 stringResource(R.string.settings_title),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
@@ -210,6 +212,13 @@ fun SettingsScreen(
                         onChecked = { enabled ->
                             onAutoplayEnabled?.invoke(enabled) ?: onSettings(settings.copy(autoplayEnabled = enabled))
                         },
+                    )
+                    PanelDivider()
+                    ToggleRow(
+                        title = stringResource(R.string.settings_auto_download_on_play),
+                        subtitle = stringResource(R.string.settings_auto_download_on_play_subtitle),
+                        checked = settings.autoDownloadOnPlay,
+                        onChecked = { onSettings(settings.copy(autoDownloadOnPlay = it)) },
                     )
                     PanelDivider()
                     CrossfadeRow(settings, onSettings)
@@ -460,14 +469,22 @@ private fun AccountCard(
     onSwitchAccount: () -> Unit,
     onSignOut: () -> Unit,
 ) {
+    val isGlass = LocalGlass.current.enabled
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
-            .shadow(elevation = 10.dp, shape = SettingsPanelShape, spotColor = Color(0x66000000), ambientColor = Color(0x33000000))
-            .clip(SettingsPanelShape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF151D2D), Color(0xFF0F1420))))
-            .border(1.dp, Brush.verticalGradient(listOf(Color(0x28FFFFFF), Color(0x0AFFFFFF))), SettingsPanelShape),
+            .shadow(elevation = if (isGlass) 4.dp else 10.dp, shape = SettingsPanelShape, spotColor = Color(0x66000000), ambientColor = Color(0x33000000))
+            .then(
+                if (isGlass) {
+                    Modifier.glassPane(SettingsPanelShape, GlassTone.PANEL)
+                } else {
+                    Modifier
+                        .clip(SettingsPanelShape)
+                        .background(Brush.verticalGradient(listOf(Color(0xFF151D2D), Color(0xFF0F1420))))
+                        .border(1.dp, Brush.verticalGradient(listOf(Color(0x28FFFFFF), Color(0x0AFFFFFF))), SettingsPanelShape)
+                }
+            ),
     ) {
         Column {
             Row(
@@ -605,14 +622,22 @@ private val SettingsPanelShape = RoundedCornerShape(18.dp)
 
 @Composable
 private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
+    val isGlass = LocalGlass.current.enabled
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
-            .shadow(elevation = 10.dp, shape = SettingsPanelShape, spotColor = Color(0x66000000), ambientColor = Color(0x33000000))
-            .clip(SettingsPanelShape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF141C2C), Color(0xFF0F1522))))
-            .border(1.dp, Brush.verticalGradient(listOf(Color(0x24FFFFFF), Color(0x0AFFFFFF))), SettingsPanelShape),
+            .shadow(elevation = if (isGlass) 4.dp else 10.dp, shape = SettingsPanelShape, spotColor = Color(0x66000000), ambientColor = Color(0x33000000))
+            .then(
+                if (isGlass) {
+                    Modifier.glassPane(SettingsPanelShape, GlassTone.PANEL)
+                } else {
+                    Modifier
+                        .clip(SettingsPanelShape)
+                        .background(Brush.verticalGradient(listOf(Color(0xFF141C2C), Color(0xFF0F1522))))
+                        .border(1.dp, Brush.verticalGradient(listOf(Color(0x24FFFFFF), Color(0x0AFFFFFF))), SettingsPanelShape)
+                }
+            ),
     ) {
         Column(content = content)
     }

@@ -25,6 +25,7 @@ import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { t } from '../i18n/index.js';
 import { io } from 'socket.io-client';
 import { bindSettingsStorageSync } from './settingsStorageSync.js';
+import { probeInternetReachability } from './networkReachability.js';
 
 export function disableCrossfadePlayback(ctx) {
   ctx.stopCrossfadeClock();
@@ -39,12 +40,31 @@ export function disableCrossfadePlayback(ctx) {
 }
 
 export function installLifecycle(ctx) {
-  const refreshHomeAfterReconnect = () => {
-    ctx.networkOffline.value = false;
-    if (ctx.authState.value.signedIn) void ctx.loadHomeLibrary();
+  let reachabilityTimer = null;
+  let reachabilityCheck = null;
+  const confirmInternet = async () => {
+    if (navigator.onLine === false) {
+      showOfflineHome();
+      return false;
+    }
+    if (!reachabilityCheck) {
+      reachabilityCheck = probeInternetReachability().finally(() => { reachabilityCheck = null; });
+    }
+    const reachable = await reachabilityCheck;
+    if (!reachable) {
+      showOfflineHome();
+      return false;
+    }
+    if (ctx.networkOffline.value) {
+      ctx.networkOffline.value = false;
+      if (ctx.authState.value.signedIn) void ctx.loadHomeLibrary();
+    }
+    return true;
   };
+  const refreshHomeAfterReconnect = () => { void confirmInternet(); };
   const showOfflineHome = () => {
     ctx.networkOffline.value = true;
+    ctx.queueRemainingDownloadsForOfflinePlayback?.();
     if (ctx.activeView.value === 'home') {
       ctx.errorMessage.value = '';
       ctx.warningMessage.value = t('ui.feedback.offlineDownloaded');
@@ -459,6 +479,11 @@ export function installLifecycle(ctx) {
     window.addEventListener('resize', ctx.syncViewportSize);
     window.addEventListener('online', refreshHomeAfterReconnect);
     window.addEventListener('offline', showOfflineHome);
+    reachabilityTimer = window.setInterval(() => {
+      const track = ctx.activeTrack.value;
+      if (!ctx.isPlaying.value || !track || !ctx.isTrackDownloaded?.(track)) return;
+      void confirmInternet();
+    }, 15000);
     document.addEventListener('fullscreenchange', ctx.onFullscreenPlayerChange);
     ctx.registerMediaSessionHandlers();
     window.addEventListener('keydown', ctx.onGlobalKeydown);
@@ -489,6 +514,10 @@ export function installLifecycle(ctx) {
       (ctx.bindVeyraConnectEvents || ctx.bindOrchardConnectEvents)();
       (ctx.loadVeyraConnectInfo || ctx.loadOrchardConnectInfo)().catch(() => {});
       await ctx.syncSongCacheSettings();
+      if (ctx.networkOffline.value || navigator.onLine === false) {
+        ctx.networkOffline.value = true;
+        ctx.queueRemainingDownloadsForOfflinePlayback?.();
+      }
       ctx.queueConnectSync();
       ctx.reviewVersionUpgrade();
       await ctx.fetchAuthStatus();
@@ -523,6 +552,7 @@ export function installLifecycle(ctx) {
   // Vue disposes watchers with this component scope. Explicit teardown below
   // owns global listeners, timers, workers, AudioContexts, and the socket.
   onBeforeUnmount(() => {
+    if (reachabilityTimer) window.clearInterval(reachabilityTimer);
     window.clearTimeout(ctx.searchDebounceTimer);
     window.clearTimeout(ctx.collectionQuickSearchTimer);
     window.clearTimeout(ctx.spotlightSearchTimer);

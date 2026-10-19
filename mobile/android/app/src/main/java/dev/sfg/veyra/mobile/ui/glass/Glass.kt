@@ -25,6 +25,7 @@ package dev.sfg.veyra.mobile.ui.glass
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
@@ -178,8 +179,10 @@ private fun Modifier.recordInto(scene: GlassScene, wash: Boolean) = this
         val radius = (if (wash) 6.dp else scene.chromeBlur).toPx() / scene.downscale
         val previous = if (wash) scene.washBlurRadius else scene.sceneBlurRadius
         if (radius != previous) {
-            sample.renderEffect = RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
-                .asComposeRenderEffect()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                sample.renderEffect = RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
+                    .asComposeRenderEffect()
+            }
             if (wash) scene.washBlurRadius = radius else scene.sceneBlurRadius = radius
         }
         sample.record(IntSize(

@@ -384,6 +384,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
         observeLocalAudioVersion()
         observeMusicVideo()
         observeAutoplay()
+        observeAutoDownloadOnPlay()
         observeConnectDeviceSync()
     }
 
@@ -556,7 +557,11 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
             ?: getApplication<Application>().getString(R.string.playerx_your_queue)
 
         viewModelScope.launch {
-            val start = graph.audioVersions.audioVersion(tracks[safeIndex])
+            val start = if (graph.downloads.isDownloaded(tracks[safeIndex].id)) {
+                tracks[safeIndex]
+            } else {
+                graph.audioVersions.audioVersion(tracks[safeIndex])
+            }
             Log.d(TAG, "playAll: starting playback with track ${start.id} ('${start.title}')")
             val requested = tracks.toMutableList().apply { this[safeIndex] = start }
             // Normalized here rather than only inside replaceQueue, because the audio-version
@@ -589,6 +594,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
         launch {
             lookupOrder.forEach { index ->
                 val track = queue[index]
+                if (graph.downloads.isDownloaded(track.id)) return@forEach
                 if (!track.needsAudioVersionLookup()) return@forEach
                 val audio = graph.audioVersions.audioVersion(track)
                 if (audio.id != track.id) local.replaceQueued(index, track.id, audio)
@@ -1145,6 +1151,20 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun observeAutoDownloadOnPlay() {
+        viewModelScope.launch {
+            combine(
+                playback.map { it.currentTrack }.distinctUntilChanged(),
+                settings.map { it.autoDownloadOnPlay }.distinctUntilChanged(),
+            ) { track, autoDownload -> if (autoDownload) track else null }
+                .collect { track ->
+                    if (track != null && track.id.isNotBlank()) {
+                        downloadTrack(track)
+                    }
+                }
+        }
+    }
+
     private fun observeConnectDeviceSync() {
         viewModelScope.launch {
             combine(
@@ -1245,6 +1265,24 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refillAutoplay(trigger: AutoplayTrigger) {
         if (!trigger.enabled || !trigger.isLocal) return
+        val currentContext = playback.value.contextTitle
+        val downloadsTitle = getApplication<Application>().getString(R.string.library_filter_downloads)
+        if (currentContext == downloadsTitle || !isOnline.value) {
+            if (trigger.remaining > AUTOPLAY_REFILL_THRESHOLD) return
+            val completed = graph.downloads.downloads.value.values
+                .filter { it.status == dev.sfg.veyra.mobile.download.DownloadStatus.COMPLETED }
+                .map { it.track }
+            if (completed.isNotEmpty()) {
+                val currentQueueIds = playback.value.queue.map { it.id }.toSet()
+                val unplayed = completed.filter { it.id !in currentQueueIds }
+                val candidates = if (unplayed.isNotEmpty()) unplayed else completed.filter { it.id != trigger.seedId }
+                if (candidates.isNotEmpty()) {
+                    val nextTracks = candidates.shuffled().take(10).map { it.copy(autoplayGenerated = true) }
+                    local.appendUpcoming(nextTracks, 50)
+                }
+            }
+            return
+        }
         if (trigger.remaining > AUTOPLAY_REFILL_THRESHOLD) return
         if (trigger.seedId.isBlank() || !isOnline.value) return
         if (trigger.seedId == autoplaySeedInFlight || trigger.seedId == autoplayExhaustedSeed) return

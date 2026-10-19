@@ -120,13 +120,13 @@ class UpdateDialogParserTest {
 
     @Test
     fun parsesActualMobileReleaseNotes() {
-        val notes = dev.sfg.veyra.mobile.MobileChangelog.CURRENT_RELEASE_NOTES
+        val notes = dev.sfg.veyra.mobile.MobileChangelog.RELEASE_NOTES_EN
         val sections = parseReleaseNoteSections(notes)
 
         assertEquals(4, sections.size)
         assertEquals("Added", sections[0].title)
         assertEquals(ReleaseNoteCategory.NEW, sections[0].category)
-        assertEquals(3, sections[0].items.size)
+        assertEquals(4, sections[0].items.size)
 
         assertEquals("Changed", sections[1].title)
         assertEquals(ReleaseNoteCategory.CHANGED, sections[1].category)
@@ -137,6 +137,29 @@ class UpdateDialogParserTest {
         assertEquals(1, sections[2].items.size)
 
         assertEquals("Maintenance", sections[3].title)
+        assertEquals(ReleaseNoteCategory.CHANGED, sections[3].category)
+        assertEquals(2, sections[3].items.size)
+    }
+
+    @Test
+    fun parsesSpanishMobileReleaseNotes() {
+        val notes = dev.sfg.veyra.mobile.MobileChangelog.RELEASE_NOTES_ES
+        val sections = parseReleaseNoteSections(notes)
+
+        assertEquals(4, sections.size)
+        assertEquals("Novedades", sections[0].title)
+        assertEquals(ReleaseNoteCategory.NEW, sections[0].category)
+        assertEquals(4, sections[0].items.size)
+
+        assertEquals("Cambios", sections[1].title)
+        assertEquals(ReleaseNoteCategory.CHANGED, sections[1].category)
+        assertEquals(3, sections[1].items.size)
+
+        assertEquals("Correcciones", sections[2].title)
+        assertEquals(ReleaseNoteCategory.FIXED, sections[2].category)
+        assertEquals(1, sections[2].items.size)
+
+        assertEquals("Mantenimiento", sections[3].title)
         assertEquals(ReleaseNoteCategory.CHANGED, sections[3].category)
         assertEquals(2, sections[3].items.size)
     }

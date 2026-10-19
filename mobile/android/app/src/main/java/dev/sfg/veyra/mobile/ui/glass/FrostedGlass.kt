@@ -449,61 +449,61 @@ private class GlassSpec(
 private val PanelSpec =
     GlassSpec(
         base = CanopyColors.Glass,
-        film = 0.14f,
-        tintMix = 0.06f,
-        contrastUndercoat = 0.12f,
-        solidBase = CanopyColors.Surface,
-        solidFilm = 0.94f,
-        solidTintMix = 0.03f,
-        solidUndercoat = 0.0f,
+        film = 0.20f,
+        tintMix = 0.12f,
+        contrastUndercoat = 0.18f,
+        solidBase = CanopyColors.Glass,
+        solidFilm = 0.42f,
+        solidTintMix = 0.12f,
+        solidUndercoat = 0.30f,
     )
 
 private val SecondarySpec =
     GlassSpec(
         base = CanopyColors.Glass,
-        film = 0.18f,
-        tintMix = 0.05f,
-        contrastUndercoat = 0.18f,
-        solidBase = CanopyColors.SurfaceHover,
-        solidFilm = 0.95f,
-        solidTintMix = 0.02f,
-        solidUndercoat = 0.0f,
+        film = 0.24f,
+        tintMix = 0.10f,
+        contrastUndercoat = 0.22f,
+        solidBase = CanopyColors.Glass,
+        solidFilm = 0.46f,
+        solidTintMix = 0.10f,
+        solidUndercoat = 0.34f,
     )
 
 private val ChromeSpec =
     GlassSpec(
         base = CanopyColors.GlassChrome,
-        film = 0.18f,
-        tintMix = 0.07f,
-        contrastUndercoat = 0.18f,
+        film = 0.26f,
+        tintMix = 0.12f,
+        contrastUndercoat = 0.24f,
         solidBase = CanopyColors.Chrome,
-        solidFilm = 0.98f,
-        solidTintMix = 0.04f,
-        solidUndercoat = 0.0f,
+        solidFilm = 0.58f,
+        solidTintMix = 0.11f,
+        solidUndercoat = 0.40f,
     )
 
 private val OverlaySpec =
     GlassSpec(
         base = CanopyColors.GlassChrome,
         film = 0.74f,
-        tintMix = 0.05f,
-        contrastUndercoat = 0.58f,
+        tintMix = 0.08f,
+        contrastUndercoat = 0.56f,
         solidBase = CanopyColors.Chrome,
-        solidFilm = 0.98f,
-        solidTintMix = 0.03f,
-        solidUndercoat = 0.0f,
+        solidFilm = 0.80f,
+        solidTintMix = 0.07f,
+        solidUndercoat = 0.60f,
     )
 
 private val ControlSpec =
     GlassSpec(
         base = CanopyColors.Glass,
-        film = 0.16f,
-        tintMix = 0.05f,
-        contrastUndercoat = 0.14f,
-        solidBase = CanopyColors.Surface,
-        solidFilm = 0.92f,
-        solidTintMix = 0.03f,
-        solidUndercoat = 0.0f,
+        film = 0.22f,
+        tintMix = 0.10f,
+        contrastUndercoat = 0.20f,
+        solidBase = CanopyColors.Glass,
+        solidFilm = 0.44f,
+        solidTintMix = 0.10f,
+        solidUndercoat = 0.32f,
     )
 
 private fun GlassTone.spec(): GlassSpec =
@@ -590,17 +590,17 @@ half4 main(float2 coord) {
     body = body + (hash(coord + uSeed) - 0.5) * 0.004;
 
     // 4. Architectural etched edge treatment:
-    // Crisp 1.0px inner perimeter hairline (strictly inside shape: d in [-1.2, 0.0])
+    // Crisp 1.0px inner perimeter hairline with subtle tint refraction
     float innerHairline = smoothstep(-1.2, -0.1, d) * mask;
-    float topGlint = clamp(1.0 - uv.y * 1.9, 0.0, 1.0) * (0.58 + 0.42 * clamp(1.0 - uv.x * 1.3, 0.0, 1.0));
-    float rimHighlight = innerHairline * (0.22 + 0.65 * topGlint);
+    float topGlint = clamp(1.0 - uv.y * 1.8, 0.0, 1.0) * (0.55 + 0.45 * clamp(1.0 - uv.x * 1.3, 0.0, 1.0));
+    float rimHighlight = innerHairline * (0.25 + 0.72 * topGlint);
+    float3 rimColor = mix(float3(1.0), tintColor, 0.28);
 
-    // Soft subsurface perimeter light scattering (0 to 5px inside edge)
-    float innerScatter = smoothstep(-8.0, 0.0, d) * (ambientTop * 0.10 + ambientLeft * 0.05);
+    // Soft subsurface perimeter light scattering (0 to 6px inside edge)
+    float innerScatter = smoothstep(-7.0, 0.0, d) * (ambientTop * 0.12 + ambientLeft * 0.06);
 
-    float totalEdge = rimHighlight + innerScatter;
-    body = body + totalEdge;
-    alpha = min(alpha + totalEdge * 0.48, 1.0);
+    body = body + (rimHighlight * rimColor + innerScatter * mix(frostColor, float3(1.0), 0.30));
+    alpha = min(alpha + (rimHighlight + innerScatter) * 0.50, 1.0);
 
     // 5. Dimensional grounding: subtle underside bevel contact occlusion
     float bottomOcclusion = innerHairline * clamp((uv.y - 0.72) / 0.28, 0.0, 1.0);

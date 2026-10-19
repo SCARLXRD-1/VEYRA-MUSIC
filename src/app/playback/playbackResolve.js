@@ -423,6 +423,9 @@ export function installPlaybackResolve(ctx) {
       if (!options.preserveQueue) {
         const queueSource = (options.queueSource || ctx.activeQueueSource())
           .filter(ctx.isPlayableTrack);
+        const offlineDownloadQueue = Boolean(ctx.networkOffline?.value && queueSource.length &&
+          queueSource.every((track) => track.downloadAvailable !== false && ctx.isTrackDownloaded?.(track)));
+        const queueLimit = offlineDownloadQueue ? Number.POSITIVE_INFINITY : 100;
         const queueStart = queueSource.findIndex((track) => track.id === trackItem.id);
         const isPlayFromQueue = Boolean(
           options.queueAlreadyShuffled ||
@@ -434,7 +437,7 @@ export function installPlaybackResolve(ctx) {
           const seen = new Set([trackItem.id]);
           seededQueue = [];
           const startIdx = queueStart >= 0 ? queueStart + 1 : 0;
-          for (let i = startIdx; i < queueSource.length && seededQueue.length < 100; i++) {
+          for (let i = startIdx; i < queueSource.length && seededQueue.length < queueLimit; i++) {
             const track = queueSource[i];
             if (ctx.isPlayableTrack(track) && track.id && !seen.has(track.id)) {
               seen.add(track.id);
@@ -445,7 +448,7 @@ export function installPlaybackResolve(ctx) {
           seededQueue = queueSource
             .slice(queueStart >= 0 ? queueStart + 1 : 0)
             .filter((track) => ctx.isPlayableTrack(track) && track.id !== trackItem.id)
-            .slice(0, 100);
+            .slice(0, queueLimit);
         }
 
         const nextQueue = ctx.shuffleEnabled.value && !isPlayFromQueue

@@ -128,50 +128,47 @@ fun SearchScreen(
     onOpenDetail: (String) -> Unit,
     onShare: ((Track) -> Unit)? = null,
 ) {
-    val plainStyle = remember { GlassStyle(enabled = false) }
     // Record only the scrolling content. The floating field must never sample itself
     // from the app-wide scene used by the mini-player and navigation.
     val searchScene = if (LocalGlass.current.enabled) rememberGlassScene(downscale = 8f, chromeBlur = 24.dp) else null
     Box(Modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalGlass provides plainStyle) {
-            LazyColumn(Modifier.fillMaxSize().glassSceneSource(searchScene), contentPadding = PaddingValues(top = 84.dp, bottom = OrchardChromeHeight + 16.dp)) {
-                item {
-                    Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp)) {
-                        Text(stringResource(R.string.search_title), style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold), color = CanopyColors.Text)
-                        Spacer(Modifier.height(14.dp))
-                        SearchCategoryChips(onOpenDetail = onOpenDetail)
-                        Spacer(Modifier.height(18.dp))
+        LazyColumn(Modifier.fillMaxSize().glassSceneSource(searchScene), contentPadding = PaddingValues(top = 84.dp, bottom = OrchardChromeHeight + 16.dp)) {
+            item {
+                Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp)) {
+                    Text(stringResource(R.string.search_title), style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold), color = CanopyColors.Text)
+                    Spacer(Modifier.height(14.dp))
+                    SearchCategoryChips(onOpenDetail = onOpenDetail)
+                    Spacer(Modifier.height(18.dp))
+                }
+            }
+            when (state) {
+                LoadState.Idle -> history(
+                    history = history,
+                    onClear = onClearHistory,
+                    onRemoveItem = onRemoveHistoryItem,
+                    onQueryChange = onQueryChange,
+                    onSearch = onSubmit,
+                )
+                LoadState.Loading -> item {
+                    Column {
+                        repeat(5) { TrackRowShimmer() }
                     }
                 }
-                when (state) {
-                    LoadState.Idle -> history(
-                        history = history,
-                        onClear = onClearHistory,
-                        onRemoveItem = onRemoveHistoryItem,
-                        onQueryChange = onQueryChange,
-                        onSearch = onSubmit,
-                    )
-                    LoadState.Loading -> item {
-                        Column {
-                            repeat(5) { TrackRowShimmer() }
-                        }
-                    }
-                    is LoadState.Content -> results(
-                        results = state.value,
-                        downloadedTrackIds = downloadedTrackIds,
-                        downloadingTrackIds = downloadingTrackIds,
-                        onPlay = onPlay,
-                        onPlayNext = onPlayNext,
-                        onAdd = onAddToQueue,
-                        onAddToPlaylist = onAddToPlaylist,
-                        onDownloadTrack = onDownloadTrack,
-                        onRemoveDownloadTrack = onRemoveDownloadTrack,
-                        onOpen = onOpenDetail,
-                        onShare = onShare,
-                    )
-                    is LoadState.Empty -> item { MessagePanel(stringResource(R.string.search_no_matches), state.message) }
-                    is LoadState.Error -> item { MessagePanel(stringResource(R.string.search_unavailable), state.message, stringResource(R.string.action_retry)) { onSubmit(query) } }
-                }
+                is LoadState.Content -> results(
+                    results = state.value,
+                    downloadedTrackIds = downloadedTrackIds,
+                    downloadingTrackIds = downloadingTrackIds,
+                    onPlay = onPlay,
+                    onPlayNext = onPlayNext,
+                    onAdd = onAddToQueue,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onDownloadTrack = onDownloadTrack,
+                    onRemoveDownloadTrack = onRemoveDownloadTrack,
+                    onOpen = onOpenDetail,
+                    onShare = onShare,
+                )
+                is LoadState.Empty -> item { MessagePanel(stringResource(R.string.search_no_matches), state.message) }
+                is LoadState.Error -> item { MessagePanel(stringResource(R.string.search_unavailable), state.message, stringResource(R.string.action_retry)) { onSubmit(query) } }
             }
         }
         CompositionLocalProvider(LocalGlassScene provides searchScene) {
@@ -185,6 +182,7 @@ fun SearchScreen(
 @Composable
 private fun SearchField(query: String, onChange: (String) -> Unit, onSubmit: (String) -> Unit) {
     val fieldShape = RoundedCornerShape(14.dp)
+    val isGlass = LocalGlass.current.enabled
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
@@ -201,8 +199,8 @@ private fun SearchField(query: String, onChange: (String) -> Unit, onSubmit: (St
         interactionSource = interactionSource,
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, fieldShape, spotColor = Color.Black.copy(alpha = 0.60f))
-            .background(Color(0xFF0A0F1A), fieldShape)
+            .shadow(if (isGlass) 0.dp else 4.dp, fieldShape, spotColor = Color.Black.copy(alpha = 0.60f))
+            .background(if (isGlass) Color.Transparent else Color(0xFF0A0F1A), fieldShape)
             .border(fieldBorder, fieldShape)
             .glassPane(fieldShape, GlassTone.CHROME),
         placeholder = { Text(stringResource(R.string.search_placeholder), color = Color(0xFF94A3B8)) },

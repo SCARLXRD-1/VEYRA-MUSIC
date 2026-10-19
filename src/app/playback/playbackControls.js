@@ -497,16 +497,22 @@ export function installPlaybackControls(ctx) {
       return;
     }
 
+    let skippedOfflineDownload = false;
     while (next) {
       let resolved = ctx.preloadedTrackMatches(next) ? ctx.nextTrackPreload.value?.resolved : null;
       if (!resolved) {
         try {
           resolved = await ctx.resolvePlayableTrack(next);
         } catch (error) {
-          if (!isUnavailableTrackError(error)) {
+          const failedOfflineDownload = Boolean(
+            ctx.networkOffline?.value &&
+            (next.downloaded || ctx.isTrackDownloaded?.(next))
+          );
+          if (!isUnavailableTrackError(error) && !failedOfflineDownload) {
             ctx.playbackError.value = error.message;
             return;
           }
+          skippedOfflineDownload ||= failedOfflineDownload;
           ctx.removeUnavailableQueueTrack?.(next);
           [next, ...remainingQueue] = ctx.queue.value;
           continue;
@@ -524,6 +530,7 @@ export function installPlaybackControls(ctx) {
       return;
     }
     ctx.clearNextPreload();
+    if (skippedOfflineDownload) ctx.playbackError.value = t('ui.feedback.offlineDownloadUnavailable');
   };
 
   // Confirms the incoming track is preloaded on the standby element and

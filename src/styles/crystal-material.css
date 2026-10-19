@@ -1,0 +1,184 @@
+/*
+ * Copyright (C) 2026 SFG545
+ * Copyright (C) 2026 AKASHI DEV
+ *
+ * This file is part of Veyra Music and is distributed under the terms of the
+ * GNU Affero General Public License, version 3 or any later version.
+ */
+
+/* A cool, thin glass finish for the persistent listening surfaces. */
+.player-bar {
+  border: 1px solid rgba(222, 239, 255, 0.16);
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.105), transparent 34% 72%, rgba(56, 189, 248, 0.065)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.012) 48%, rgba(4, 10, 22, 0.18)),
+    var(--glass-bg);
+  box-shadow:
+    0 24px 58px -18px rgba(0, 0, 0, 0.76),
+    0 0 0 1px rgba(255, 255, 255, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(4, 10, 22, 0.42),
+    0 0 30px rgba(var(--player-accent-rgb), 0.09);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  transition: background 380ms ease, border-color 380ms ease, box-shadow 480ms ease, backdrop-filter 380ms ease;
+}
+
+.sidebar,
+.sidebar .q-drawer__content,
+.right-panel,
+.right-panel .q-drawer__content,
+.lyrics-sidebar,
+.side-column {
+  border-color: rgba(218, 235, 255, 0.09);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), transparent 42%),
+    linear-gradient(180deg, rgba(56, 189, 248, 0.035), transparent 55%),
+    var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+html[data-layout-preset='canopy'] .canopy-bar {
+  border-bottom-color: rgba(222, 239, 255, 0.15);
+  background:
+    linear-gradient(104deg, rgba(255, 255, 255, 0.085), transparent 42% 76%, rgba(56, 189, 248, 0.055)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 100%),
+    var(--glass-bg);
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+html[data-theme-resolved='light'] .player-bar {
+  border-color: rgba(255, 255, 255, 0.92);
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.82), transparent 38% 72%, rgba(56, 189, 248, 0.075)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.05)),
+    var(--glass-bg);
+  box-shadow:
+    0 20px 48px -16px rgba(15, 23, 42, 0.24),
+    0 0 0 1px rgba(148, 163, 184, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 0 28px rgba(var(--player-accent-rgb), 0.065);
+}
+
+html[data-theme-resolved='light'] .sidebar,
+html[data-theme-resolved='light'] .sidebar .q-drawer__content,
+html[data-theme-resolved='light'] .right-panel,
+html[data-theme-resolved='light'] .right-panel .q-drawer__content,
+html[data-theme-resolved='light'] .lyrics-sidebar,
+html[data-theme-resolved='light'] .side-column {
+  border-color: rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.78), transparent 48%),
+    linear-gradient(180deg, rgba(56, 189, 248, 0.035), transparent 55%),
+    var(--glass-bg);
+}
+
+html[data-theme-resolved='oled'] .player-bar,
+html[data-theme-resolved='oled'] .sidebar,
+html[data-theme-resolved='oled'] .sidebar .q-drawer__content,
+html[data-theme-resolved='oled'] .right-panel,
+html[data-theme-resolved='oled'] .right-panel .q-drawer__content,
+html[data-theme-resolved='oled'] .lyrics-sidebar,
+html[data-theme-resolved='oled'] .side-column {
+  background-color: #000;
+  background-image:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 48%),
+    linear-gradient(180deg, rgba(30, 108, 235, 0.045), transparent 70%);
+}
+
+/* Playback is the activation signal: the glass catches more light and gains a
+   restrained accent halo while audio is actually moving. */
+.player-bar--playing:not(.player-bar--empty) {
+  border-color: rgba(var(--player-accent-soft-rgb), 0.5);
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.19), transparent 33% 68%, rgba(var(--player-accent-soft-rgb), 0.15)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(var(--player-accent-rgb), 0.045) 48%, rgba(4, 10, 22, 0.2)),
+    var(--glass-bg-elevated);
+  box-shadow:
+    0 26px 64px -16px rgba(0, 0, 0, 0.78),
+    0 0 0 1px rgba(var(--player-accent-soft-rgb), 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(4, 10, 22, 0.38),
+    0 0 38px rgba(var(--player-accent-rgb), 0.2),
+    0 0 76px rgba(var(--player-accent-soft-rgb), 0.1);
+  backdrop-filter: blur(26px) saturate(1.5);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
+}
+
+.player-bar--playing:not(.player-bar--empty)::before {
+  opacity: 0.96;
+  filter: blur(25px) saturate(1.55);
+}
+
+.player-bar--playing:not(.player-bar--empty)::after {
+  opacity: 0.3;
+  filter: blur(24px) saturate(1.9);
+}
+
+html[data-layout-preset='canopy'] .canopy-bar {
+  transition: background 380ms ease, border-color 380ms ease, box-shadow 480ms ease;
+}
+
+html[data-layout-preset='canopy'] .canopy-bar--playing {
+  border-bottom-color: rgba(56, 189, 248, 0.62);
+  box-shadow:
+    0 14px 42px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(56, 189, 248, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(56, 189, 248, 0.16);
+}
+
+html[data-layout-preset='canopy'] .canopy-bar--playing::before {
+  opacity: 0.92;
+  filter: blur(21px);
+}
+
+html[data-theme-resolved='light'] .player-bar--playing:not(.player-bar--empty) {
+  border-color: rgba(var(--player-accent-rgb), 0.32);
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.96), transparent 38% 68%, rgba(var(--player-accent-soft-rgb), 0.12)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(var(--player-accent-rgb), 0.035)),
+    var(--glass-bg-elevated);
+  box-shadow:
+    0 22px 54px -16px rgba(15, 23, 42, 0.26),
+    0 0 0 1px rgba(var(--player-accent-rgb), 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 34px rgba(var(--player-accent-rgb), 0.16);
+}
+
+html[data-theme-resolved='light'] .canopy-bar--playing {
+  border-bottom-color: rgba(30, 108, 235, 0.48);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.13), 0 1px 0 rgba(30, 108, 235, 0.16);
+}
+
+html[data-theme-resolved='oled'] .player-bar--playing:not(.player-bar--empty) {
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.13), transparent 38% 72%, rgba(var(--player-accent-rgb), 0.12)),
+    #000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-bar,
+  html[data-layout-preset='canopy'] .canopy-bar {
+    transition-duration: 0.01ms;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .player-bar,
+  .sidebar,
+  .sidebar .q-drawer__content,
+  .right-panel,
+  .right-panel .q-drawer__content,
+  .lyrics-sidebar,
+  .side-column,
+  html[data-layout-preset='canopy'] .canopy-bar {
+    background-color: var(--glass-bg-elevated);
+  }
+}

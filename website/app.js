@@ -17,23 +17,28 @@
 
   // Hashes oficiales verificados
   const OFFICIAL_HASHES = {
-    'd353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416': {
-      platform: 'Android Móvil / Smart TV (v1.0.1)',
-      file: 'app-release.apk',
+    '69129b4c295508b7869444365fe70f5f9c573e3a55db76a05725644524d91da5': {
+      platform: 'Android Móvil / Smart TV (v1.0.2)',
+      file: 'veyramusic.apk',
       size: '162 MB'
     },
-    'ef42b345dcfaded8cd7495b695f395482db04dbcf3fb2667ec930be7dc6218b2': {
+    '0016e72ca6e347d85e97ee50ef52e3bd0c20e8e7ef281dda1ddf8c8ea7ffe73f': {
+      platform: 'Linux Desktop (x64) (v1.0.2)',
+      file: 'veyra-v1.0.2-linux-x64.tar.gz',
+      size: '393 MB'
+    },
+    'fe3ac1a8361eaa11fb17285c570c34fb8a1dbfb861311fc55531747d7e64ac1c': {
+      platform: 'Windows Desktop (x64) (v1.0.2)',
+      file: 'veyra-v1.0.2-windows-x64.zip',
+      size: '405 MB'
+    },
+    'd353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416': {
       platform: 'Android Móvil / Smart TV (v1.0.1)',
       file: 'app-release.apk',
       size: '162 MB'
     },
     '79eea24a888cc99de6aad1a26bc4d5fbca7d03b6de027464d478cd5700e09510': {
       platform: 'Android Móvil / Smart TV (v1.0.0)',
-      file: 'app-release.apk',
-      size: '129 MB'
-    },
-    'b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea': {
-      platform: 'Android Móvil / Smart TV',
       file: 'app-release.apk',
       size: '129 MB'
     },
@@ -52,10 +57,10 @@
   const IS_WEB_HOSTED = window.location.protocol === 'http:' || window.location.protocol === 'https:';
 
   const DOWNLOAD_URLS = {
-    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk',
-    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk',
-    linux: IS_WEB_HOSTED ? '/download/linux' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz',
-    windows: IS_WEB_HOSTED ? '/download/windows' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip'
+    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk',
+    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk',
+    linux: IS_WEB_HOSTED ? '/download/linux' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyra-v1.0.2-linux-x64.tar.gz',
+    windows: IS_WEB_HOSTED ? '/download/windows' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyra-v1.0.2-windows-x64.zip'
   };
 
   /* -------------------------------------------------------------------------
@@ -73,8 +78,8 @@
           arch: 'Universal APK',
           btnLabel: 'Descargar APK TV (162 MB)',
           url: DOWNLOAD_URLS.tv,
-          filename: 'app-release.apk',
-          meta: 'Formato: Leanback APK &bull; D-Pad Remote Ready &bull; 162 MB'
+          filename: 'veyramusic.apk',
+          meta: 'Formato: APK universal para Android TV &bull; Control D-Pad &bull; 162 MB'
         };
       }
       return {
@@ -84,8 +89,8 @@
         arch: 'Universal APK',
         btnLabel: 'Descargar APK Móvil (162 MB)',
         url: DOWNLOAD_URLS.mobile,
-        filename: 'app-release.apk',
-        meta: 'Formato: APK Universal &bull; Android 7.0 - 15 &bull; 162 MB'
+        filename: 'veyramusic.apk',
+        meta: 'Formato: APK universal &bull; Android 7.0+ &bull; 162 MB'
       };
     }
 
@@ -95,10 +100,10 @@
         name: 'Windows 10 / 11 (64-bit)',
         iconSvg: ICONS.windows,
         arch: 'x64 Portable',
-        btnLabel: 'Descargar Veyra Windows (343 MB)',
+        btnLabel: 'Descargar Veyra Windows (405 MB)',
         url: DOWNLOAD_URLS.windows,
-        filename: 'veyra-v1.0.0-windows-x64.zip',
-        meta: 'Formato: Portable Zip &bull; SMTC Media Ready &bull; 343 MB'
+        filename: 'veyra-v1.0.2-windows-x64.zip',
+        meta: 'Formato: Portable Zip &bull; SMTC Media Ready &bull; 405 MB'
       };
     }
 
@@ -108,10 +113,10 @@
         name: 'Linux Desktop (Wayland / X11)',
         iconSvg: ICONS.linux,
         arch: 'x86_64',
-        btnLabel: 'Descargar Veyra Linux (394 MB)',
+        btnLabel: 'Descargar Veyra Linux (393 MB)',
         url: DOWNLOAD_URLS.linux,
-        filename: 'veyra-v1.0.0-linux-x64.tar.gz',
-        meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 394 MB'
+        filename: 'veyra-v1.0.2-linux-x64.tar.gz',
+        meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 393 MB'
       };
     }
 
@@ -121,10 +126,10 @@
       name: 'Linux Desktop (x86_64)',
       iconSvg: ICONS.linux,
       arch: 'x86_64',
-      btnLabel: 'Descargar Veyra Linux (394 MB)',
+      btnLabel: 'Descargar Veyra Linux (378 MB)',
       url: DOWNLOAD_URLS.linux,
-      filename: 'veyra-v1.0.0-linux-x64.tar.gz',
-      meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 394 MB'
+      filename: 'veyra-v1.0.2-linux-x64.tar.gz',
+      meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 378 MB'
     };
   }
 

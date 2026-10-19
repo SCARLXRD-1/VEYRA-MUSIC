@@ -3,25 +3,25 @@
 
 [[redirects]]
   from = "/download/android"
-  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk"
   status = 302
   force = true
 
 [[redirects]]
   from = "/download/tv"
-  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk"
   status = 302
   force = true
 
 [[redirects]]
   from = "/download/linux"
-  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyra-v1.0.2-linux-x64.tar.gz"
   status = 302
   force = true
 
 [[redirects]]
   from = "/download/windows"
-  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyra-v1.0.2-windows-x64.zip"
   status = 302
   force = true
 

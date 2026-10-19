@@ -158,6 +158,15 @@ export function installPlaybackRecoveryActions(ctx) {
       if (ctx.retryAudioWithAlternateFormat(track, { resumeAt })) return;
     }
 
+    if (
+      ctx.networkOffline?.value &&
+      (track?.downloaded || track?.playbackSource === 'download' || ctx.isTrackDownloaded?.(track))
+    ) {
+      ctx.playbackError.value = t('ui.feedback.offlineDownloadUnavailable');
+      void ctx.playNext?.({ fromEnded: true });
+      return;
+    }
+
     const code = error?.code ? `Media error ${error.code}` : 'Media error';
     const baseMessage = error?.message || `${code}: this stream format is not playable`;
     const formatDetail = track

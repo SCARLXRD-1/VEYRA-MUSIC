@@ -71,6 +71,8 @@ data class OrchardSettings(
     val animatedArtwork: Boolean = true,
     /** Save motion covers alongside newly downloaded songs for offline playback. */
     val downloadAnimatedArtwork: Boolean = false,
+    /** Guardar automáticamente en almacenamiento local cada canción que se reproduzca. */
+    val autoDownloadOnPlay: Boolean = false,
     val audioQuality: AudioQuality = AudioQuality.HIGH,
     /** Toma el acento de la paleta del fondo de pantalla del sistema en lugar del verde propio de Veyra Music. */
     val useSystemColors: Boolean = false,

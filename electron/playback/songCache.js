@@ -24,6 +24,7 @@
 // Owns on-disk song bytes and metadata, including eviction and partial-response handling.
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -55,6 +56,7 @@ export function createSongCache(options = {}) {
     ? Math.floor(configuredMaxWriteLagBytes)
     : defaultMaxWriteLagBytes;
   const activeWrites = new Set();
+  const verificationCache = new Map();
   let directoryReady = null;
 
   async function ensureDirectory() {
@@ -87,7 +89,7 @@ export function createSongCache(options = {}) {
     return filePath.replace(/\.bin$/, '.json');
   }
 
-  async function writeMetadata(filePath, videoId, stream) {
+  async function writeMetadata(filePath, videoId, stream, sha256 = '') {
     await writeMetadataFile(filePath, {
       videoId,
       title: stream?.cacheMetadata?.title || '',
@@ -104,6 +106,7 @@ export function createSongCache(options = {}) {
       itag: stream?.format?.itag || '',
       mimeType: stream?.format?.mimeType || '',
       contentLength: Number(stream?.format?.contentLength || 0),
+      sha256,
       cachedAt: new Date().toISOString()
     });
   }
@@ -207,6 +210,7 @@ export function createSongCache(options = {}) {
       let writer;
       let reader;
       let written = 0;
+      const digest = createHash('sha256');
       const cancel = () => void reader?.cancel().catch(() => {});
       try {
         if (signal.aborted) throw new Error('Song cache write was cancelled');
@@ -221,6 +225,7 @@ export function createSongCache(options = {}) {
           if (chunk.done) break;
           if (!chunk.value?.byteLength) continue;
           written += chunk.value.byteLength;
+          digest.update(chunk.value);
           await writeChunk(writer, chunk.value);
           onProgress(written);
         }
@@ -229,7 +234,7 @@ export function createSongCache(options = {}) {
         if (signal.aborted) throw new Error('Song cache write was cancelled');
         if (written !== expectedLength) throw new Error('Song cache received an incomplete stream');
         await fs.promises.rename(temporaryPath, destinationPath);
-        await writeMetadata(destinationPath, videoId, stream).catch(() => {});
+        await writeMetadata(destinationPath, videoId, stream, digest.digest('hex')).catch(() => {});
         await prune();
       } catch {
         writer?.destroy();
@@ -273,7 +278,7 @@ export function createSongCache(options = {}) {
       .map(async (entry) => {
         const filePath = path.join(directory, entry.name);
         const stat = await fs.promises.stat(filePath);
-        return { filePath, name: entry.name, mtimeMs: stat.mtimeMs, size: stat.size };
+        return { filePath, name: entry.name, mtimeMs: stat.mtimeMs, ctimeMs: stat.ctimeMs, size: stat.size };
       }));
   }
 
@@ -329,9 +334,32 @@ export function createSongCache(options = {}) {
         key: file.name,
         size: file.size,
         cachedAt: new Date(file.mtimeMs).toISOString(),
-        ...metadata
+        ...metadata,
+        available: await downloadFileAvailable(file, metadata)
       };
     }));
+    const existingAudioFiles = new Set(files.map((file) => file.name));
+    const metadataFiles = await fs.promises.readdir(directory, { withFileTypes: true });
+    for (const metadataFile of metadataFiles) {
+      if (!metadataFile.isFile() || !metadataFile.name.endsWith('.json')) continue;
+      const audioName = metadataFile.name.replace(/\.json$/, '.bin');
+      if (existingAudioFiles.has(audioName)) continue;
+      try {
+        const raw = JSON.parse(await fs.promises.readFile(path.join(directory, metadataFile.name), 'utf8'));
+        const metadata = normalizeMetadata(raw, { name: audioName });
+        if (!metadata.downloaded || !metadata.videoId) continue;
+        const stat = await fs.promises.stat(path.join(directory, metadataFile.name));
+        entries.push({
+          key: audioName,
+          size: 0,
+          cachedAt: metadata.cachedAt || stat.mtime.toISOString(),
+          ...metadata,
+          available: false
+        });
+      } catch {
+        // Ignore malformed sidecars; they cannot identify a playable download.
+      }
+    }
 
     const sortedEntries = entries.sort((a, b) => new Date(b.downloadedAt || b.cachedAt) - new Date(a.downloadedAt || a.cachedAt));
     const downloads = sortedEntries.filter((entry) => entry.downloaded);
@@ -356,6 +384,7 @@ export function createSongCache(options = {}) {
       const metadata = await readMetadata(file);
       if (!metadata.downloaded) continue;
       if (metadata.videoId !== requestedId && metadata.sourceVideoId !== requestedId) continue;
+      if (!await downloadFileAvailable(file, metadata)) continue;
       return { ...metadata, filePath: file.filePath, key: file.name, size: file.size };
     }
 
@@ -458,6 +487,27 @@ export function createSongCache(options = {}) {
     return list();
   }
 
+  async function downloadFileAvailable(file, metadata) {
+    if (!isDownloadFileAvailable(metadata, file.size)) return false;
+    const expectedHash = String(metadata.sha256 || '').trim().toLowerCase();
+    // Older downloads predate checksums; keep them playable after the size check.
+    if (!metadata.downloaded || !expectedHash) return true;
+    const key = `${file.filePath}:${file.size}:${file.ctimeMs || 0}`;
+    if (verificationCache.has(key)) return verificationCache.get(key);
+    for (const cachedKey of verificationCache.keys()) {
+      if (cachedKey.startsWith(`${file.filePath}:`) && cachedKey !== key) verificationCache.delete(cachedKey);
+    }
+    const verified = new Promise((resolve) => {
+      const hash = createHash('sha256');
+      const input = fs.createReadStream(file.filePath);
+      input.on('data', (chunk) => hash.update(chunk));
+      input.once('error', () => resolve(false));
+      input.once('end', () => resolve(hash.digest('hex') === expectedHash));
+    });
+    verificationCache.set(key, verified);
+    return verified;
+  }
+
   function update(nextSettings = {}) {
     settings = normalizeSongCacheSettings(nextSettings);
     void prune().catch(() => {});
@@ -477,6 +527,11 @@ export function createSongCache(options = {}) {
     serveDownload,
     update
   };
+}
+
+function isDownloadFileAvailable(metadata = {}, size = 0) {
+  const expectedSize = Number(metadata.contentLength || 0);
+  return Number(size) > 0 && (!expectedSize || Number(size) === expectedSize);
 }
 
 function normalizeMetadata(metadata = {}, file = {}) {
@@ -499,6 +554,7 @@ function normalizeMetadata(metadata = {}, file = {}) {
     itag: metadata.itag || '',
     mimeType: metadata.mimeType || '',
     contentLength: Number(metadata.contentLength || 0),
+    sha256: String(metadata.sha256 || '').trim().toLowerCase(),
     cachedAt: metadata.cachedAt || ''
   };
 }

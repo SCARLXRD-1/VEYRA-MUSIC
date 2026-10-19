@@ -506,6 +506,9 @@ private fun OrchardNavigation(
                 downloadingTrackIds = downloadingTrackIds,
                 totalBytesUsed = totalBytesUsed,
                 onPlay = { viewModel.play(it, libraryFilter.sourceTitle(context)) },
+                onPlayQueue = { tracks, index ->
+                    viewModel.playAll(tracks, index, context.getString(R.string.library_filter_downloads))
+                },
                 onPlayNext = if (canControlQueue) viewModel::playNext else null,
                 onAddToQueue = if (canControlQueue) viewModel::addToQueue else null,
                 onOpenDetail = { id -> viewModel.openDetail(id); nav.safeNavigate(Routes.detail(id)) },
@@ -515,10 +518,21 @@ private fun OrchardNavigation(
             )
         }
         composable(Routes.DOWNLOADS) {
+            val downloadsTitle = context.getString(R.string.library_filter_downloads)
             dev.sfg.veyra.mobile.ui.screens.DownloadsScreen(
                 downloads = downloadsList,
                 totalBytesUsed = totalBytesUsed,
-                onPlay = { viewModel.play(it, context.getString(R.string.library_filter_downloads)) },
+                currentTrackId = playback.currentTrack?.id,
+                isPlaying = playback.isPlaying,
+                onPlayTrack = { tracks, index ->
+                    viewModel.playAll(tracks, index, downloadsTitle)
+                },
+                onPlayAll = { tracks ->
+                    viewModel.playAll(tracks, 0, downloadsTitle)
+                },
+                onShuffle = { tracks ->
+                    viewModel.playAll(tracks.shuffled(), 0, downloadsTitle)
+                },
                 onRemoveDownload = viewModel::removeDownload,
             )
         }

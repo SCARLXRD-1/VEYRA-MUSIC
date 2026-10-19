@@ -30,6 +30,7 @@ function createMockContext() {
   const ctx = {
     activeTrack: ref(null),
     queue: ref([]),
+    networkOffline: ref(false),
     songCacheEnabled: ref(true),
     songCacheMaxSizeMb: ref(512),
     songCacheInventory: ref({
@@ -130,4 +131,23 @@ test('download indicators work seamlessly across album and playlist collections'
   ctx.downloadBusyTrackIds.value = ['album-track-2'];
   assert.equal(ctx.isTrackDownloading(albumTracks[0]), false);
   assert.equal(ctx.isTrackDownloading(albumTracks[1]), true);
+});
+
+test('offline playback queue keeps valid queued downloads and adds remaining available downloads once', () => {
+  const ctx = createMockContext();
+  const active = { id: 'active' };
+  const queued = { id: 'queued' };
+  ctx.activeTrack.value = active;
+  ctx.queue.value = [queued, { id: 'stream-only' }, queued];
+  ctx.networkOffline.value = true;
+  ctx.songCacheInventory.value.downloads = [
+    { videoId: 'active', downloaded: true },
+    { videoId: 'queued', downloaded: true },
+    { videoId: 'unavailable', downloaded: true, available: false },
+    { videoId: 'remaining', downloaded: true }
+  ];
+
+  assert.equal(ctx.queueRemainingDownloadsForOfflinePlayback(), true);
+  assert.deepEqual(ctx.queue.value.map((track) => track.id), ['queued', 'remaining']);
+  assert.equal(ctx.queueRemainingDownloadsForOfflinePlayback(), false);
 });

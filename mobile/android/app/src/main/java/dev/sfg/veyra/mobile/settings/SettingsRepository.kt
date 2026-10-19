@@ -58,6 +58,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
             OrchardSettings(
                 animatedArtwork = values[ANIMATED_ARTWORK] ?: true,
                 downloadAnimatedArtwork = values[DOWNLOAD_ANIMATED_ARTWORK] ?: false,
+                autoDownloadOnPlay = values[AUTO_DOWNLOAD_ON_PLAY] ?: false,
                 audioQuality = runCatching { AudioQuality.valueOf(values[AUDIO_QUALITY].orEmpty()) }
                     .getOrDefault(AudioQuality.HIGH),
                 useSystemColors = values[SYSTEM_COLORS] ?: false,
@@ -104,6 +105,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
             store.edit {
                 it[ANIMATED_ARTWORK] = value.animatedArtwork
                 it[DOWNLOAD_ANIMATED_ARTWORK] = value.downloadAnimatedArtwork
+                it[AUTO_DOWNLOAD_ON_PLAY] = value.autoDownloadOnPlay
                 it[AUDIO_QUALITY] = value.audioQuality.name
                 it[SYSTEM_COLORS] = value.useSystemColors
                 it[ANIMATED_BACKGROUND] = value.animatedBackground
@@ -207,6 +209,7 @@ class SettingsRepository(context: Context, private val scope: CoroutineScope) {
     private companion object {
         val ANIMATED_ARTWORK = booleanPreferencesKey("animated_artwork")
         val DOWNLOAD_ANIMATED_ARTWORK = booleanPreferencesKey("download_animated_artwork")
+        val AUTO_DOWNLOAD_ON_PLAY = booleanPreferencesKey("auto_download_on_play")
         val AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val SYSTEM_COLORS = booleanPreferencesKey("system_colors")
         val ANIMATED_BACKGROUND = booleanPreferencesKey("animated_background")

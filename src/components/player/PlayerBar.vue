@@ -166,7 +166,7 @@ export default {
   <q-footer
     ref="playerBarRoot"
     class="player-bar"
-    :class="{ 'player-bar--empty': !activeTrack }"
+    :class="{ 'player-bar--empty': !activeTrack, 'player-bar--playing': isPlaying }"
     :style="playerBarStyle"
     :aria-label="activeTrack ? `${$t('ui.player.nowPlaying')}: ${activeTrack.title}` : $t('ui.player.nothingPlaying')"
   >

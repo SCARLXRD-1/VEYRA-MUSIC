@@ -26,7 +26,18 @@
 - Se añadieron las traducciones correspondientes en inglés y español de México.
 - Se conectaron también cadenas dinámicas emitidas por módulos de reproducción y acciones para que respeten el idioma seleccionado.
 
-### Cliente Móvil v1.0.0 (Cierre y Optimizaciones de Producción)
+### Cliente Móvil v1.0.2 (Efecto Cristal, Auto-reproducción Offline y Claridad de Cuenta)
+
+- **Versión oficial:** `1.0.2` (código de versión 3, codename "AKASHI DEV").
+- **Efecto Cristal Esmerilado Universal:**
+  - Shader neo-glassmórfico de alto rendimiento con desenfoque de arte reactivo en tiempo real y soporte visual transversal.
+- **Claridad UI/UX para Cuenta de Veyra (Cloud Sync):**
+  - Switcher explícito entre "Iniciar sesión" y "Crear cuenta".
+  - Mensajes descriptivos en español e inglés explicando que la cuenta es opcional y sirve para sincronizar biblioteca y DSP entre el celular y la app de escritorio de PC.
+- **Auto-reproducción Continua de Descargas Offline:**
+  - La cola de descargas ahora resuelve directamente los IDs locales sin requerir conexión a internet ni bloquear el auto-avance, permitiendo reproducción ininterrumpida de todas las canciones descargadas.
+- **Changelog Bilingüe Dinámico:**
+  - Diálogo de novedades con detección reactiva de idioma (español e inglés) tras cada actualización.
 
 - **Versión oficial:** `1.0.0` (código de versión 1, codename "AKASHI DEV", namespace `dev.sfg.veyra.connect`).
 - **Autenticación e Integraciones:**
@@ -47,6 +58,14 @@
 ## Hoja de ruta
 
 ### 1. Plan de Optimización para la Versión TV (Android TV / Leanback)
+- **Diagnóstico del Error en Smart TV ("No se ha podido analizar el paquete" / `INSTALL_PARSE_FAILED`):**
+  - **Firma del APK (APK Signature Schemes):** Los instaladores de Android TV 8/9/10/11 exigen compatibilidad estricta con firma v1 (JAR signing) además de v2/v3. Sin v1 o con claves no alineadas mediante `zipalign`, el `PackageParser` de AOSP rechaza el paquete con error de análisis.
+  - **Arquitectura de CPU (ABI 32-bit `armeabi-v7a`):** La mayoría de Smart TVs y TV Sticks (Xiaomi, TCL, Fire TV, Hisense) operan con userland de 32 bits (`armeabi-v7a`). Cualquier APK distribuido para TV debe incluir obligatoriamente binarios nativos compilados para `armeabi-v7a` (Earmark Rust, C++ resampler, Opus).
+  - **Atributos de manifiesto XML y `compileSdk`:** Atributos como `android:dataExtractionRules` o recursos generados bajo `compileSdk 37` causan excepciones de análisis en versiones previas de Android TV. Se debe mantener `minSdk = 24` con retrocompatibilidad XML.
+  - **Descargas truncadas:** Las herramientas comunes de TV (como Downloader) son propensas a truncar descargas de archivos APK pesados. Se implementará verificación de tamaño y SHA-256 en el portal de descargas.
+- **Acciones Técnicas para Versión TV:**
+  - Compilación específica para TV con firma híbrida (`v1SigningEnabled true`, `v2SigningEnabled true`), alineación `zipalign -p 4` y empaquetado para `armeabi-v7a` y `arm64-v8a`.
+  - Manifiesto TV completo con `<category android:name="android.intent.category.LEANBACK_LAUNCHER" />`, banner TV (`android:banner="@drawable/ic_tv_banner"`), y `android.hardware.touchscreen = false`.
 - **Navegación D-Pad / Control Remoto:** Enfoque visual neumórfico con anillo de brillo cian (`#38BDF8`), escala reactiva en tarjetas de música y navegación accesible a 3 metros (10-foot UI).
 - **Now Playing para Gran Formato:** Carátula en gran escala, fondo ambiental dinámico optimizado para paneles OLED/LED 4K, letras sincronizadas con fuentes legibles a distancia.
 - **Optimización de Recursos en Smart TV:** Reducción de resolución de shaders/desenfoques para procesadores de gama de entrada, limitando consumo de RAM a menos de 150 MB y fijando animación a 60 FPS estables.

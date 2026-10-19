@@ -24,6 +24,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { installMediaHandlers } from '../src/app/playback/mediaHandlers.js';
+import { installPlaybackRecoveryActions } from '../src/app/playback/playbackRecoveryActions.js';
 import {
   installPlaybackControls,
   playbackNeedsFreshStream,
@@ -183,6 +184,73 @@ test('advancing past an unavailable track removes it and plays the following que
   assert.equal(played[0].track, playable);
   assert.deepEqual(played[0].options.queueSource, [playable]);
   assert.equal(played[0].options.resolved.id, playable.id);
+});
+
+test('offline playback skips a downloaded queue item whose local file cannot be resolved', async () => {
+  const missingDownload = { id: 'missing-download', downloaded: true };
+  const playableDownload = { id: 'playable-download', downloaded: true };
+  const played = [];
+  const ctx = {
+    activeTrack: { value: { id: 'current-track', downloaded: true } },
+    autoplayEnabled: { value: false },
+    clearNextPreload() {},
+    isTrackDownloaded: (track) => Boolean(track?.downloaded),
+    networkOffline: { value: true },
+    nextTrackPreload: { value: null },
+    playbackError: { value: '' },
+    preloadedTrackMatches: () => false,
+    queue: { value: [missingDownload, playableDownload] },
+    removeUnavailableQueueTrack(track) {
+      this.queue.value = this.queue.value.filter((item) => item.id !== track.id);
+    },
+    repeatMode: { value: 'off' },
+    resolvePlayableTrack: async (track) => {
+      if (track.id === missingDownload.id) throw new Error('The local download was not found');
+      return { id: track.id, streamUrl: `/download/${track.id}` };
+    },
+    shuffleEnabled: { value: false },
+    playTrack: (track, options) => played.push({ track, options })
+  };
+
+  installPlaybackControls(ctx);
+  await ctx.playNext({ fromEnded: true });
+
+  assert.deepEqual(ctx.queue.value, [playableDownload]);
+  assert.equal(played.length, 1);
+  assert.equal(played[0].track, playableDownload);
+  assert.deepEqual(played[0].options.queueSource, [playableDownload]);
+});
+
+test('a failed active download skips forward while offline', async () => {
+  const media = { currentTime: 12, error: { code: 2 }, src: 'http://127.0.0.1/download/song' };
+  const nextCalls = [];
+  const ctx = {
+    activeTrack: { value: { id: 'broken-download', downloaded: true, playbackSource: 'download' } },
+    activeTrackIsVideo: { value: false },
+    buffering: { value: false },
+    clearPlaybackStallRecovery() {},
+    currentPlaybackElement: () => media,
+    currentTime: { value: 12 },
+    isCurrentAudioEvent: () => true,
+    isPlaying: { value: false },
+    isSeeking: { value: false },
+    networkOffline: { value: true },
+    playbackError: { value: '' },
+    playNext: (options) => nextCalls.push(options),
+    retryAudioStream: () => false,
+    retryAudioWithAlternateFormat: () => false,
+    retryVideoStream: () => false
+  };
+
+  installPlaybackRecoveryActions(ctx);
+  ctx.clearPlaybackStallRecovery = () => {};
+  ctx.retryAudioStream = () => false;
+  ctx.retryAudioWithAlternateFormat = () => false;
+  ctx.retryVideoStream = () => false;
+  await ctx.onAudioError({ target: media });
+
+  assert.deepEqual(nextCalls, [{ fromEnded: true }]);
+  assert.match(ctx.playbackError.value, /canción descargada/i);
 });
 
 test('repeat queue wraps from the final playlist track to the first track', async () => {

@@ -24,6 +24,8 @@
 package dev.sfg.veyra.mobile.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import dev.sfg.veyra.mobile.ui.glass.GlassTone
+import dev.sfg.veyra.mobile.ui.glass.glassFill
+import dev.sfg.veyra.mobile.ui.glass.glassPane
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -221,18 +226,86 @@ fun VeyraAccountSettingsCard(
     }
 
     if (showAuthDialog) {
+        var isRegisterMode by remember { mutableStateOf(false) }
         var email by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var customUrl by remember { mutableStateOf(syncService.supabaseUrl) }
         var customKey by remember { mutableStateOf(syncService.anonKey) }
         var showCustomConfig by remember { mutableStateOf(!syncService.isConfigured()) }
         var authSuccessNotice by remember { mutableStateOf("") }
+        val dialogShape = RoundedCornerShape(24.dp)
 
         AlertDialog(
             onDismissRequest = { if (!isAuthLoading) showAuthDialog = false },
-            title = { Text(stringResource(R.string.acct_dialog_title)) },
+            modifier = Modifier.glassPane(dialogShape, GlassTone.OVERLAY),
+            containerColor = glassFill(CanopyColors.Surface),
+            shape = dialogShape,
+            title = {
+                Column {
+                    Text(
+                        stringResource(R.string.acct_dialog_title),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = CanopyColors.Text,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (isRegisterMode) stringResource(R.string.acct_register_desc)
+                        else stringResource(R.string.acct_login_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CanopyColors.Muted,
+                    )
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Segmented mode switcher
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .padding(3.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (!isRegisterMode) CloudAccent else Color.Transparent)
+                                .clickable {
+                                    isRegisterMode = false
+                                    authError = ""
+                                    authSuccessNotice = ""
+                                }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                stringResource(R.string.action_sign_in),
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (!isRegisterMode) Color.White else CanopyColors.Muted,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isRegisterMode) CloudAccent else Color.Transparent)
+                                .clickable {
+                                    isRegisterMode = true
+                                    authError = ""
+                                    authSuccessNotice = ""
+                                }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                stringResource(R.string.acct_create_account),
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (isRegisterMode) Color.White else CanopyColors.Muted,
+                            )
+                        }
+                    }
+
                     if (authSuccessNotice.isNotBlank()) {
                         Text(authSuccessNotice, color = CanopyColors.Accent, style = MaterialTheme.typography.bodySmall)
                     }
@@ -256,6 +329,30 @@ fun VeyraAccountSettingsCard(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                    if (isRegisterMode) {
+                        Text(
+                            stringResource(R.string.acct_register_hint),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                            color = CanopyColors.Muted,
+                        )
+                    }
+
+                    TextButton(
+                        onClick = {
+                            isRegisterMode = !isRegisterMode
+                            authError = ""
+                            authSuccessNotice = ""
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (isRegisterMode) stringResource(R.string.acct_switch_to_login)
+                            else stringResource(R.string.acct_switch_to_register),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CloudAccent,
+                        )
+                    }
 
                     TextButton(onClick = { showCustomConfig = !showCustomConfig }) {
                         Text(
@@ -293,55 +390,46 @@ fun VeyraAccountSettingsCard(
                         authError = ""
                         authSuccessNotice = ""
                         scope.launch {
-                            val res = syncService.signIn(email, password)
-                            isAuthLoading = false
-                            if (res.isSuccess) {
-                                userEmail = syncService.userEmail
-                                showAuthDialog = false
+                            val res = if (isRegisterMode) {
+                                syncService.signUp(email, password)
                             } else {
-                                authError = res.exceptionOrNull()?.message
-                                    ?: context.getString(R.string.acct_sign_in_failed)
+                                syncService.signIn(email, password)
                             }
-                        }
-                    },
-                    enabled = email.isNotBlank() && password.isNotBlank() && !isAuthLoading,
-                ) {
-                    if (isAuthLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
-                    } else {
-                        Text(stringResource(R.string.action_sign_in))
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        if (customUrl.isNotBlank()) syncService.supabaseUrl = customUrl
-                        if (customKey.isNotBlank()) syncService.anonKey = customKey
-
-                        isAuthLoading = true
-                        authError = ""
-                        authSuccessNotice = ""
-                        scope.launch {
-                            val res = syncService.signUp(email, password)
                             isAuthLoading = false
                             if (res.isSuccess) {
                                 if (syncService.isAuthenticated()) {
                                     userEmail = syncService.userEmail
                                     showAuthDialog = false
-                                } else {
-                                    authSuccessNotice =
-                                        context.getString(R.string.acct_account_created_msg)
+                                } else if (isRegisterMode) {
+                                    authSuccessNotice = context.getString(R.string.acct_account_created_msg)
                                 }
                             } else {
                                 authError = res.exceptionOrNull()?.message
-                                    ?: context.getString(R.string.acct_sign_up_failed)
+                                    ?: context.getString(
+                                        if (isRegisterMode) R.string.acct_sign_up_failed
+                                        else R.string.acct_sign_in_failed,
+                                    )
                             }
                         }
                     },
                     enabled = email.isNotBlank() && password.isNotBlank() && !isAuthLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = CloudAccent),
                 ) {
-                    Text(stringResource(R.string.acct_create_account))
+                    if (isAuthLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                    } else {
+                        Text(
+                            if (isRegisterMode) stringResource(R.string.acct_create_account)
+                            else stringResource(R.string.action_sign_in),
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { if (!isAuthLoading) showAuthDialog = false },
+                ) {
+                    Text(stringResource(R.string.action_cancel), color = CanopyColors.Muted)
                 }
             },
         )

@@ -55,6 +55,19 @@ object AppLocale {
     /** Current in-app language as observable state for the Compose layer. */
     val language: StateFlow<AppLanguage> = _language.asStateFlow()
 
+    /** Determines whether the current active language is Spanish (forced or system default). */
+    fun isSpanish(context: Context? = null): Boolean {
+        val lang = _language.value
+        if (lang == AppLanguage.SPANISH) return true
+        if (lang == AppLanguage.ENGLISH) return false
+        val defaultLocale = if (context != null) {
+            context.resources.configuration.locales.get(0)
+        } else {
+            Locale.getDefault()
+        }
+        return defaultLocale?.language?.startsWith("es", ignoreCase = true) == true
+    }
+
     /** Loads the persisted choice into [language]; call once before composing. */
     fun seed(context: Context) {
         _language.value = read(context)
@@ -91,7 +104,7 @@ object AppLocale {
         if (this == AppLanguage.SYSTEM) {
             LocaleList.getDefault()
         } else {
-            LocaleList(Locale(tag))
+            LocaleList(Locale.forLanguageTag(tag))
         }
 
     /** Persists [language] and publishes it so the UI updates without recreating the activity. */

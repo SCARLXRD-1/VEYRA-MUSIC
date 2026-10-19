@@ -44,6 +44,7 @@ object DownloadPlaybackHelper {
             mimeType = mime,
             expiresAtMs = Long.MAX_VALUE,
             bitrateKbps = 320,
+            contentLength = file.length(),
         )
     }
 }

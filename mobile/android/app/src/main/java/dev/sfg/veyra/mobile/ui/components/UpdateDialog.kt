@@ -95,6 +95,9 @@ import dev.sfg.veyra.connect.BuildConfig
 import dev.sfg.veyra.connect.R
 import dev.sfg.veyra.mobile.MobileUpdateMetadata
 import dev.sfg.veyra.mobile.UpdateState
+import dev.sfg.veyra.mobile.ui.glass.GlassTone
+import dev.sfg.veyra.mobile.ui.glass.glassFill
+import dev.sfg.veyra.mobile.ui.glass.glassPane
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 import org.intellij.markdown.MarkdownElementTypes
@@ -128,13 +131,13 @@ data class ReleaseNoteSection(
 fun categorizeSection(title: String): ReleaseNoteCategory {
     val lower = title.lowercase()
     return when {
-        lower.contains("security") || lower.contains("vulnerability") ->
+        lower.contains("security") || lower.contains("vulnerability") || lower.contains("seguridad") ->
             ReleaseNoteCategory.SECURITY
-        lower.contains("fix") || lower.contains("bug") || lower.contains("resolved") || lower.contains("patch") ->
+        lower.contains("fix") || lower.contains("bug") || lower.contains("resolved") || lower.contains("patch") || lower.contains("corregid") || lower.contains("correcci") || lower.contains("arregl") ->
             ReleaseNoteCategory.FIXED
-        lower.contains("new") || lower.contains("add") || lower.contains("feature") || lower.contains("improved") || lower.contains("improvement") ->
+        lower.contains("new") || lower.contains("add") || lower.contains("feature") || lower.contains("improved") || lower.contains("improvement") || lower.contains("novedad") || lower.contains("agregad") || lower.contains("mejor") ->
             ReleaseNoteCategory.NEW
-        lower.contains("change") || lower.contains("update") || lower.contains("tweak") || lower.contains("maintenance") || lower.contains("refactor") || lower.contains("remov") || lower.contains("deprecat") ->
+        lower.contains("change") || lower.contains("update") || lower.contains("tweak") || lower.contains("maintenance") || lower.contains("refactor") || lower.contains("remov") || lower.contains("deprecat") || lower.contains("cambi") || lower.contains("mantenimient") ->
             ReleaseNoteCategory.CHANGED
         else ->
             ReleaseNoteCategory.OTHER
@@ -407,15 +410,17 @@ fun UpdateDialog(
                 onDismissRequest = onDismiss,
                 properties = DialogProperties(usePlatformDefaultWidth = false),
             ) {
+                val dialogShape = RoundedCornerShape(24.dp)
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = CanopyColors.Surface,
+                    shape = dialogShape,
+                    color = glassFill(CanopyColors.Surface),
                     border = BorderStroke(1.dp, CanopyColors.RuleStrong),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 24.dp)
                         .widthIn(max = 440.dp)
-                        .heightIn(max = 680.dp),
+                        .heightIn(max = 680.dp)
+                        .glassPane(dialogShape, GlassTone.OVERLAY),
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
@@ -1029,15 +1034,17 @@ fun ReleaseNotesDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        val dialogShape = RoundedCornerShape(24.dp)
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = CanopyColors.Surface,
+            shape = dialogShape,
+            color = glassFill(CanopyColors.Surface),
             border = BorderStroke(1.dp, CanopyColors.RuleStrong),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 24.dp)
                 .widthIn(max = 440.dp)
-                .heightIn(max = 680.dp),
+                .heightIn(max = 680.dp)
+                .glassPane(dialogShape, GlassTone.OVERLAY),
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),

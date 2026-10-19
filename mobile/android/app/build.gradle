@@ -65,8 +65,8 @@ android {
         applicationId = 'dev.sfg.veyra.mobile'
         minSdk = veyraMinSdk
         targetSdk = 36
-        versionCode = 2
-        versionName = '1.0.1'
+        versionCode = 3
+        versionName = '1.0.2'
         buildConfigField 'String', 'CODENAME', '"AKASHI DEV"'
         // Only the build that is actually published may offer updates. Every other
         // build has its own applicationId, so the published APK is neither an
@@ -136,7 +136,6 @@ android {
         }
         release {
             if (veyraReleaseSigningReady) signingConfig = signingConfigs.release
-            else signingConfig = signingConfigs.debug
             minifyEnabled = true
             shrinkResources = true
             proguardFiles(getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro')
@@ -180,6 +179,21 @@ android {
         resValues = true
     }
 
+}
+
+// Never ship or locally produce a production variant signed with Android's debug key.
+// Debug/test task graphs remain buildable without release credentials.
+gradle.taskGraph.whenReady { taskGraph ->
+    def requestsReleaseVariant = taskGraph.allTasks.any { task ->
+        task.name in ['assembleRelease', 'bundleRelease', 'validateSigningRelease'] ||
+            task.name.startsWith('packageRelease')
+    }
+    if (requestsReleaseVariant && !veyraReleaseSigningReady) {
+        throw new GradleException(
+            'A production APK requires ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD, ' +
+                'ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD. Build assembleDebug for local testing.'
+        )
+    }
 }
 
 kotlin {

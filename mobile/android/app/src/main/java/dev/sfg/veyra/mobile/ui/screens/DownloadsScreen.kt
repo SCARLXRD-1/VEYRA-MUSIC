@@ -44,7 +44,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -73,7 +75,12 @@ import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 fun DownloadsScreen(
     downloads: List<DownloadItem>,
     totalBytesUsed: Long,
-    onPlay: (Track) -> Unit,
+    currentTrackId: String? = null,
+    isPlaying: Boolean = false,
+    onPlay: (Track) -> Unit = {},
+    onPlayTrack: (List<Track>, Int) -> Unit = { list, idx -> list.getOrNull(idx)?.let(onPlay) },
+    onPlayAll: ((List<Track>) -> Unit)? = null,
+    onShuffle: ((List<Track>) -> Unit)? = null,
     onRemoveDownload: (String) -> Unit,
 ) {
     val completed = downloads.filter { it.status == DownloadStatus.COMPLETED }
@@ -110,6 +117,61 @@ fun DownloadsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = CanopyColors.Muted,
                 )
+                if (completed.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            onClick = {
+                                val tracks = completed.map { it.track }
+                                onPlayAll?.invoke(tracks) ?: onPlayTrack(tracks, 0)
+                            },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = LocalAccent.current,
+                            modifier = Modifier.weight(1f).height(44.dp),
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    stringResource(R.string.dl_play_all),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                )
+                            }
+                        }
+                        Surface(
+                            onClick = {
+                                val tracks = completed.map { it.track }
+                                onShuffle?.invoke(tracks) ?: onPlayTrack(tracks.shuffled(), 0)
+                            },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFF1E293B).copy(alpha = 0.8f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.weight(1f).height(44.dp),
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Icon(Icons.Rounded.Shuffle, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFF94A3B8), modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    stringResource(R.string.dl_shuffle_all),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = androidx.compose.ui.graphics.Color(0xFFF8FAFC),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -138,9 +200,12 @@ fun DownloadsScreen(
                 )
             }
             items(completed, key = { "completed_${it.track.id}" }) { item ->
+                val trackIndex = completed.indexOf(item).coerceAtLeast(0)
+                val isTrackPlaying = isPlaying && item.track.id == currentTrackId
                 DownloadedTrackRow(
                     item = item,
-                    onPlay = { onPlay(item.track) },
+                    isPlaying = isTrackPlaying,
+                    onPlay = { onPlayTrack(completed.map { it.track }, trackIndex) },
                     onDelete = { onRemoveDownload(item.track.id) },
                 )
             }
@@ -173,14 +238,18 @@ fun DownloadsScreen(
 @Composable
 internal fun DownloadedTrackRow(
     item: DownloadItem,
+    isPlaying: Boolean = false,
     onPlay: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val activeBorder = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.55f))
+    val defaultBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+
     Surface(
         onClick = onPlay,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        color = Color(0xFF131B2B).copy(alpha = 0.50f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+        color = if (isPlaying) Color(0xFF1E293B).copy(alpha = 0.85f) else Color(0xFF131B2B).copy(alpha = 0.50f),
+        border = if (isPlaying) activeBorder else defaultBorder,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
         Row(
@@ -193,8 +262,10 @@ internal fun DownloadedTrackRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         item.track.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFFF8FAFC),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
+                        ),
+                        color = if (isPlaying) Color(0xFF38BDF8) else Color(0xFFF8FAFC),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -213,7 +284,11 @@ internal fun DownloadedTrackRow(
                 )
             }
             IconButton(onClick = onPlay) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.dl_play_offline_cd), tint = Color(0xFF38BDF8))
+                Icon(
+                    imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                    contentDescription = stringResource(R.string.dl_play_offline_cd),
+                    tint = Color(0xFF38BDF8),
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.dl_delete_download_cd), tint = Color(0xFF94A3B8))

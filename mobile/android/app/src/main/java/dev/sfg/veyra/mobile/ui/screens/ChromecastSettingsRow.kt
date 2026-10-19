@@ -36,6 +36,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,7 +59,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -77,45 +84,79 @@ private tailrec fun Context.findFragmentActivity(): FragmentActivity? = when (th
     else -> null
 }
 
-/** Observes the active CastSession name so UI dynamically updates when connected. */
+/** Holds the current Chromecast connection and connecting status. */
+internal data class CastState(
+    val isConnected: Boolean = false,
+    val isConnecting: Boolean = false,
+    val deviceName: String? = null,
+)
+
+/** Observes the active CastSession state (connecting, connected, device name). */
 @Composable
-internal fun rememberCurrentCastDeviceName(): String? {
+internal fun rememberCurrentCastState(): CastState {
     val context = LocalContext.current
-    var castDeviceName by remember { mutableStateOf<String?>(null) }
+    var state by remember { mutableStateOf(CastState()) }
 
     DisposableEffect(context) {
         val castContext = runCatching { CastContext.getSharedInstance(context) }.getOrNull()
         val sessionManager = castContext?.sessionManager
-        castDeviceName = sessionManager?.currentCastSession?.castDevice?.friendlyName
+        val initialSession = sessionManager?.currentCastSession
+        if (initialSession != null) {
+            state = CastState(
+                isConnected = initialSession.isConnected,
+                isConnecting = initialSession.isConnecting,
+                deviceName = initialSession.castDevice?.friendlyName,
+            )
+        }
 
         val listener =
             object : SessionManagerListener<CastSession> {
                 override fun onSessionStarted(session: CastSession, sessionId: String) {
-                    castDeviceName = session.castDevice?.friendlyName
+                    state = CastState(
+                        isConnected = true,
+                        isConnecting = false,
+                        deviceName = session.castDevice?.friendlyName,
+                    )
                 }
 
                 override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
-                    castDeviceName = session.castDevice?.friendlyName
+                    state = CastState(
+                        isConnected = true,
+                        isConnecting = false,
+                        deviceName = session.castDevice?.friendlyName,
+                    )
                 }
 
                 override fun onSessionEnded(session: CastSession, error: Int) {
-                    castDeviceName = null
+                    state = CastState()
                 }
 
                 override fun onSessionSuspended(session: CastSession, reason: Int) {}
 
-                override fun onSessionStarting(session: CastSession) {}
+                override fun onSessionStarting(session: CastSession) {
+                    state = CastState(
+                        isConnecting = true,
+                        isConnected = false,
+                        deviceName = session.castDevice?.friendlyName,
+                    )
+                }
 
                 override fun onSessionStartFailed(session: CastSession, error: Int) {
-                    castDeviceName = null
+                    state = CastState()
                 }
 
                 override fun onSessionEnding(session: CastSession) {}
 
-                override fun onSessionResuming(session: CastSession, sessionId: String) {}
+                override fun onSessionResuming(session: CastSession, sessionId: String) {
+                    state = CastState(
+                        isConnecting = true,
+                        isConnected = false,
+                        deviceName = session.castDevice?.friendlyName,
+                    )
+                }
 
                 override fun onSessionResumeFailed(session: CastSession, error: Int) {
-                    castDeviceName = null
+                    state = CastState()
                 }
             }
 
@@ -129,7 +170,14 @@ internal fun rememberCurrentCastDeviceName(): String? {
         }
     }
 
-    return castDeviceName
+    return state
+}
+
+/** Observes the active CastSession name so UI dynamically updates when connected. */
+@Composable
+internal fun rememberCurrentCastDeviceName(): String? {
+    val state = rememberCurrentCastState()
+    return if (state.isConnected) state.deviceName else null
 }
 
 /**
@@ -178,8 +226,29 @@ internal fun ChromecastMediaRouteButton(
 @Composable
 internal fun ChromecastSettingsRow(modifier: Modifier = Modifier) {
     var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
-    val castDeviceName = rememberCurrentCastDeviceName()
-    val isConnected = castDeviceName != null
+    val castState = rememberCurrentCastState()
+    val isConnected = castState.isConnected
+    val isConnecting = castState.isConnecting
+
+    val infiniteTransition = rememberInfiniteTransition(label = "CastPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.40f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "PulseAlpha",
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "PulseScale",
+    )
 
     Row(
         modifier =
@@ -196,23 +265,100 @@ internal fun ChromecastSettingsRow(modifier: Modifier = Modifier) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val iconShape = RoundedCornerShape(12.dp)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(iconShape)
+                .background(
+                    when {
+                        isConnected -> LocalAccent.current.copy(alpha = 0.18f)
+                        isConnecting -> LocalAccent.current.copy(alpha = 0.12f * pulseAlpha)
+                        else -> CanopyColors.Canvas
+                    }
+                )
+                .border(
+                    1.dp,
+                    when {
+                        isConnected -> LocalAccent.current.copy(alpha = 0.40f)
+                        isConnecting -> LocalAccent.current.copy(alpha = 0.55f * pulseAlpha)
+                        else -> CanopyColors.Rule
+                    },
+                    iconShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isConnected || isConnecting) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_notification),
+                    contentDescription = "Veyra Music",
+                    tint = if (isConnected) LocalAccent.current else LocalAccent.current.copy(alpha = pulseAlpha),
+                    modifier = Modifier
+                        .size(22.dp)
+                        .then(
+                            if (isConnecting) Modifier.graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                            else Modifier
+                        ),
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Cast,
+                    contentDescription = null,
+                    tint = CanopyColors.MutedStrong,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.width(14.dp))
+
         Column(Modifier.weight(1f).padding(end = 16.dp)) {
             Text(
-                "Chromecast",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Normal),
+                if (isConnected || isConnecting) "Chromecast • Veyra Music" else "Chromecast",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = CanopyColors.Text,
             )
-            val subtitle =
-                if (isConnected && castDeviceName != null) {
-                    stringResource(R.string.cast_connected_format, castDeviceName)
-                } else {
-                    stringResource(R.string.cast_play_speakers)
+            when {
+                isConnecting -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(LocalAccent.current.copy(alpha = pulseAlpha))
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.cast_connecting_veyra),
+                            color = LocalAccent.current.copy(alpha = pulseAlpha),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        )
+                    }
                 }
-            Text(
-                subtitle,
-                color = if (isConnected) LocalAccent.current else CanopyColors.Muted,
-                style = MaterialTheme.typography.bodyMedium,
-            )
+                isConnected && castState.deviceName != null -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(LocalAccent.current)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.cast_connected_format, castState.deviceName),
+                            color = LocalAccent.current,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+                else -> {
+                    Text(
+                        stringResource(R.string.cast_play_speakers),
+                        color = CanopyColors.Muted,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
         }
         ChromecastMediaRouteButton(
             modifier = Modifier.size(40.dp),
@@ -225,9 +371,30 @@ internal fun ChromecastSettingsRow(modifier: Modifier = Modifier) {
 @Composable
 internal fun ChromecastConnectRow(modifier: Modifier = Modifier) {
     var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
-    val castDeviceName = rememberCurrentCastDeviceName()
-    val isConnected = castDeviceName != null
+    val castState = rememberCurrentCastState()
+    val isConnected = castState.isConnected
+    val isConnecting = castState.isConnecting
     val shape = RoundedCornerShape(16.dp)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "CastConnectPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.40f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "PulseAlpha",
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "PulseScale",
+    )
 
     Surface(
         onClick = {
@@ -247,25 +414,53 @@ internal fun ChromecastConnectRow(modifier: Modifier = Modifier) {
         ) {
             Box(
                 modifier =
-                    Modifier.size(40.dp)
+                    Modifier.size(42.dp)
                         .clip(CircleShape)
-                        .background(CanopyColors.Canvas)
-                        .border(1.dp, CanopyColors.Rule, CircleShape),
+                        .background(
+                            when {
+                                isConnected -> LocalAccent.current.copy(alpha = 0.20f)
+                                isConnecting -> LocalAccent.current.copy(alpha = 0.15f * pulseAlpha)
+                                else -> CanopyColors.Canvas
+                            }
+                        )
+                        .border(
+                            1.dp,
+                            when {
+                                isConnected -> LocalAccent.current.copy(alpha = 0.45f)
+                                isConnecting -> LocalAccent.current.copy(alpha = 0.6f * pulseAlpha)
+                                else -> CanopyColors.Rule
+                            },
+                            CircleShape,
+                        ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Cast,
-                    contentDescription = null,
-                    tint = if (isConnected) LocalAccent.current else CanopyColors.MutedStrong,
-                    modifier = Modifier.size(20.dp),
-                )
+                if (isConnected || isConnecting) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_notification),
+                        contentDescription = "Veyra Music",
+                        tint = if (isConnected) LocalAccent.current else LocalAccent.current.copy(alpha = pulseAlpha),
+                        modifier = Modifier
+                            .size(22.dp)
+                            .then(
+                                if (isConnecting) Modifier.graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                                else Modifier
+                            ),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Cast,
+                        contentDescription = null,
+                        tint = CanopyColors.MutedStrong,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
 
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Chromecast",
+                    text = if (isConnected || isConnecting) "Chromecast • Veyra Music" else "Chromecast",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = CanopyColors.Text,
                 )
@@ -275,20 +470,23 @@ internal fun ChromecastConnectRow(modifier: Modifier = Modifier) {
                             Modifier.size(7.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isConnected) CanopyColors.Accent else CanopyColors.Muted
+                                    when {
+                                        isConnected -> CanopyColors.Accent
+                                        isConnecting -> LocalAccent.current.copy(alpha = pulseAlpha)
+                                        else -> CanopyColors.Muted
+                                    }
                                 )
                     )
                     Spacer(Modifier.width(6.dp))
-                    val subtitle =
-                        if (isConnected && castDeviceName != null) {
-                            stringResource(R.string.cast_connected_format, castDeviceName)
-                        } else {
-                            stringResource(R.string.cast_speakers_displays)
-                        }
+                    val subtitle = when {
+                        isConnecting -> stringResource(R.string.cast_connecting_veyra)
+                        isConnected && castState.deviceName != null -> stringResource(R.string.cast_connected_format, castState.deviceName)
+                        else -> stringResource(R.string.cast_speakers_displays)
+                    }
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = CanopyColors.Muted,
+                        color = if (isConnected || isConnecting) LocalAccent.current else CanopyColors.Muted,
                     )
                 }
             }

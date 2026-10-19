@@ -670,17 +670,24 @@ jobs:
       - name: Restore Android release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" ]]; then
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/orchard-release.jks"
-            chmod 600 "$RUNNER_TEMP/orchard-release.jks"
-          fi
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/veyra-release.jks"
+          chmod 600 "$RUNNER_TEMP/veyra-release.jks"
+          keytool -list -keystore "$RUNNER_TEMP/veyra-release.jks" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
 
       - name: Build Android APK
         working-directory: mobile/android
         env:
-          ANDROID_KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && format('{0}/orchard-release.jks', runner.temp) || '' }}
+          ANDROID_KEYSTORE_FILE: ${{ format('{0}/veyra-release.jks', runner.temp) }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

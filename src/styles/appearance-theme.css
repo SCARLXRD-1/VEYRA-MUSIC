@@ -62,10 +62,11 @@ html[data-theme-resolved='light'] {
   --primary: #1E6CEB;
   --primary-strong: #0284C7;
   --accent: #0284C7;
-  --glass-bg: rgba(255, 255, 255, 0.88);
-  --glass-bg-elevated: rgba(255, 255, 255, 0.96);
-  --glass-border: 1px solid rgba(226, 232, 240, 0.85);
-  --glass-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.6);
+  --glass-bg: rgba(248, 251, 255, 0.72);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.88);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.82);
+  --glass-shadow: 0 18px 44px -12px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.16), inset 0 1px rgba(255, 255, 255, 0.94);
+  --glass-blur: blur(22px) saturate(1.24);
 }
 
 html[data-theme-resolved='light'] .window-titlebar {
