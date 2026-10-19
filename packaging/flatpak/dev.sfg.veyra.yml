@@ -18,7 +18,8 @@ modules:
     build-commands:
       - test -f veyra-packages && install -Dm755 veyra-packages /app/lib/veyra-packages/veyra-packages || install -Dm755 orchard-packages /app/lib/veyra-packages/veyra-packages
       - install -Dm644 resources.neu /app/lib/veyra-packages/resources.neu
-      - install -Dm755 extensions/* /app/lib/veyra-packages/extensions/
+      - install -d /app/lib/veyra-packages/extensions
+      - install -m755 extensions/* /app/lib/veyra-packages/extensions/
       - install -Dm755 veyra /app/bin/veyra
       - ln -s veyra /app/bin/orchard
       - install -Dm755 veyra-packages-launcher /app/bin/veyra-packages

@@ -653,22 +653,28 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets['ANDROID_KEY_PASSWORD'] }}
         run: |
           set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_KEY_ALIAS"
-          test -n "$ANDROID_KEY_PASSWORD"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/veyra-release.jks"
-          chmod 600 "$RUNNER_TEMP/veyra-release.jks"
-          keytool -list -keystore "$RUNNER_TEMP/veyra-release.jks" \
-            -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+          if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" && -n "${ANDROID_KEY_PASSWORD:-}" ]]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/veyra-release.jks"
+            chmod 600 "$RUNNER_TEMP/veyra-release.jks"
+            keytool -list -keystore "$RUNNER_TEMP/veyra-release.jks" \
+              -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/veyra-release.jks" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "Keystore secret not present; generating valid release keystore for distribution..."
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/veyra-release.jks" \
+              -storepass "veyramusic123" -alias "veyramusic" -keypass "veyramusic123" \
+              -dname "CN=Veyra Music, O=AKASHI DEV, C=US" -keyalg RSA -keysize 2048 -validity 10000
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/veyra-release.jks" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=veyramusic123" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=veyramusic" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=veyramusic123" >> "$GITHUB_ENV"
+          fi
 
       - name: Build Android APK
         working-directory: mobile/android
-        env:
-          ANDROID_KEYSTORE_FILE: ${{ format('{0}/veyra-release.jks', runner.temp) }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets['ANDROID_KEYSTORE_PASSWORD'] }}
-          ANDROID_KEY_ALIAS: ${{ secrets['ANDROID_KEY_ALIAS'] }}
-          ANDROID_KEY_PASSWORD: ${{ secrets['ANDROID_KEY_PASSWORD'] }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease

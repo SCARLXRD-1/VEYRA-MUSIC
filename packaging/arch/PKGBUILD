@@ -30,15 +30,15 @@ build() {
 package() {
   cd "$srcdir/$pkgname-$pkgver"
 
-  install -Dm755 \
-    'dist/neutralino/veyra-packages/veyra-packages-linux_x64' \
-    "$pkgdir/usr/lib/veyra-packages/veyra-packages"
-  install -Dm644 \
-    'dist/neutralino/veyra-packages/resources.neu' \
-    "$pkgdir/usr/lib/veyra-packages/resources.neu"
-  install -Dm755 \
-    'extensions/veyra-packages-backend' \
-    "$pkgdir/usr/lib/veyra-packages/extensions/veyra-packages-backend"
+  test -f 'dist/neutralino/veyra-packages/veyra-packages-linux_x64' && bin_src='dist/neutralino/veyra-packages/veyra-packages-linux_x64' || bin_src='dist/neutralino/orchard-packages/orchard-packages-linux_x64'
+  install -Dm755 "$bin_src" "$pkgdir/usr/lib/veyra-packages/veyra-packages"
+
+  test -f 'dist/neutralino/veyra-packages/resources.neu' && res_src='dist/neutralino/veyra-packages/resources.neu' || res_src='dist/neutralino/orchard-packages/resources.neu'
+  install -Dm644 "$res_src" "$pkgdir/usr/lib/veyra-packages/resources.neu"
+
+  test -f 'extensions/veyra-packages-backend' && ext_src='extensions/veyra-packages-backend' || ext_src='extensions/orchard-packages-backend'
+  install -Dm755 "$ext_src" "$pkgdir/usr/lib/veyra-packages/extensions/veyra-packages-backend"
+
   install -Dm755 \
     "$srcdir/veyra-packages.sh" \
     "$pkgdir/usr/bin/veyra"
@@ -48,9 +48,9 @@ package() {
   install -Dm644 \
     "$srcdir/veyra-packages.desktop" \
     "$pkgdir/usr/share/applications/dev.akashi.veyra.desktop"
-  install -Dm644 \
-    'resources/icons/veyra-packages.png' \
-    "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/dev.akashi.veyra.png"
+
+  test -f 'resources/icons/veyra-packages.png' && icon_src='resources/icons/veyra-packages.png' || icon_src='resources/icons/orchard-packages.png'
+  install -Dm644 "$icon_src" "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/dev.akashi.veyra.png"
   install -Dm644 \
     'LICENSE' \
     "$pkgdir/usr/share/licenses/veyra-packages/LICENSE"
