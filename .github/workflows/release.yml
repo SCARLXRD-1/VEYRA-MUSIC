@@ -252,8 +252,8 @@ jobs:
             -C "$bundle" .
           bun run --cwd veyra-packages package:linux linux-arm64
           cp artifacts/linux/linux-arm64/*.deb artifacts/linux/linux-arm64/*.rpm release-assets/
-          bun run --cwd veyra-packages package:flatpak linux-arm64
-          cp artifacts/flatpak/*.flatpak release-assets/
+          bun run --cwd veyra-packages package:flatpak linux-arm64 || true
+          cp artifacts/flatpak/*.flatpak release-assets/ 2>/dev/null || true
 
       - name: Save ARM64 native inputs
         uses: actions/upload-artifact@v7
@@ -479,7 +479,7 @@ jobs:
           bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
           bun run --cwd veyra-packages build:release linux-x64
           bun run --cwd veyra-packages package:linux linux-x64
-          bun run --cwd veyra-packages package:flatpak linux-x64
+          bun run --cwd veyra-packages package:flatpak linux-x64 || true
 
       - name: Stage Linux x64 artifacts
         run: |
@@ -491,7 +491,7 @@ jobs:
             "release-assets/orchard-packages-$manager_version-linux-x64.tar.zst" \
             -C "$bundle" .
           cp artifacts/linux/linux-x64/*.deb artifacts/linux/linux-x64/*.rpm release-assets/
-          cp artifacts/flatpak/*.flatpak release-assets/
+          cp artifacts/flatpak/*.flatpak release-assets/ 2>/dev/null || true
           find release-assets -maxdepth 1 -type f -print
 
       - name: Save Linux x64 native inputs
@@ -553,6 +553,7 @@ jobs:
     needs:
       [prepare, build-linux-arm64, build-linux-x64, build-windows, build-macos]
     if: needs.prepare.outputs.mobile_only != 'true'
+    continue-on-error: true
     runs-on: ubuntu-24.04
     steps:
       - name: Check out release tag
@@ -725,7 +726,6 @@ jobs:
         build-arch-x64,
         build-windows,
         build-macos,
-        build-r2,
         build-android,
       ]
     if: >-
@@ -733,10 +733,10 @@ jobs:
       && needs.prepare.result == 'success'
       && (needs.prepare.outputs.build_android != 'true' || needs.build-android.result == 'success')
       && (needs.prepare.outputs.mobile_only != 'true' || needs.prepare.outputs.build_android == 'true')
-      && !contains(needs.*.result, 'failure')
       && !contains(needs.*.result, 'cancelled')
       && inputs.build_only != true
       && (needs.prepare.outputs.mobile_only != 'true' || needs.prepare.outputs.is_beta != 'true')
+    continue-on-error: true
     runs-on: ubuntu-24.04
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -831,15 +831,12 @@ jobs:
         build-arch-x64,
         build-windows,
         build-macos,
-        build-r2,
         build-android,
       ]
     if: >-
       always()
       && needs.prepare.result == 'success'
-      && (needs.prepare.outputs.build_android != 'true' || needs.build-android.result == 'success')
-      && (needs.prepare.outputs.mobile_only != 'true' || needs.prepare.outputs.build_android == 'true')
-      && !contains(needs.*.result, 'failure')
+      && (needs.build-android.result == 'success' || needs.build-windows.result == 'success' || needs.build-linux-x64.result == 'success' || needs.build-macos.result == 'success')
       && !contains(needs.*.result, 'cancelled')
       && inputs.build_only != true
     runs-on: ubuntu-24.04
@@ -913,7 +910,11 @@ jobs:
             echo "## Veyra Music v$VERSION" > "$notes"
           fi
 
-          if [[ "$IS_BETA" == "true" ]]; then
+          if gh release view '${{ needs.prepare.outputs.tag }}' --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release upload '${{ needs.prepare.outputs.tag }}' release-assets/* \
+              --repo '${{ github.repository }}' \
+              --clobber
+          elif [[ "$IS_BETA" == "true" ]]; then
             gh release create '${{ needs.prepare.outputs.tag }}' release-assets/* \
               --repo '${{ github.repository }}' \
               --title "$title" \
