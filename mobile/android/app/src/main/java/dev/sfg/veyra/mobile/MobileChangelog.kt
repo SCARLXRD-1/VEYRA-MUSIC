@@ -39,6 +39,7 @@ object MobileChangelog {
         - **Efecto Cristal Esmerilado Universal**: Renderizado neo-glassmórfico optimizado en Ajustes, Dispositivos, Biblioteca y Búsqueda.
         - **Modo TV y Experiencia Ampliada**: Integración y refinamiento de navegación por foco D-Pad para pantallas grandes y dispositivos de sala.
         - **Chromecast más estable**: Mantiene la sesión durante reconexiones breves, prioriza la red Wi‑Fi local y evita cortar streams de audio largos por tiempos de espera HTTP.
+        - **Reproductor de TV a pantalla completa**: Al elegir una canción, la TV abre directamente el reproductor principal.
 
         ### Cambios
         - **Paridad Estética Desktop y Mobile**: Unificación del sistema de diseño Enterprise Slate & Obsidian Industrial en diálogos, formularios y componentes de control.
@@ -47,6 +48,7 @@ object MobileChangelog {
 
         ### Correcciones
         - **Preservación Total de Metadatos en Cola**: Resuelto el problema donde las pistas encoladas o del historial aparecían como «Artista desconocido» o títulos vacíos mediante caché en memoria y persistencia protegida contra el truncado IPC de Jetpack Media3.
+        - **Recuperación de streams rechazados**: Si YouTube responde 403 a una URL de NewPipe, se descarta ese cliente y la app cambia a otro perfil de reproducción en vez de repetir la URL rechazada.
 
         ### Mantenimiento
         - **Arquitectura de Audio y DSP**: Sincronización continua de motores WSOLA y modelos INT8 de seguimiento de ritmo.
@@ -62,6 +64,7 @@ object MobileChangelog {
         - **Universal Frosted Glass Effect**: Optimized neo-glassmorphic rendering across Settings, Devices, Library, and Search.
         - **TV Mode & Living Room Experience**: Refined D-Pad focus navigation and responsive layouts for big screens.
         - **More Stable Chromecast**: Preserves the Cast session through brief reconnects, prioritizes the local Wi-Fi network, and prevents long audio streams from timing out.
+        - **Full-screen TV player**: Selecting a song on TV opens the main player directly.
 
         ### Changed
         - **Desktop & Mobile Aesthetic Parity**: Seamless alignment with the Enterprise Slate & Obsidian Industrial design system across dialogs, forms, and control panels.
@@ -70,6 +73,7 @@ object MobileChangelog {
 
         ### Fixed
         - **Full Queue Metadata Preservation**: Completely resolved the issue causing queued and history tracks to lose their titles or display "Unknown Artist" with in-memory caching and persistence guarded against Jetpack Media3 IPC binder truncation.
+        - **Rejected stream recovery**: When YouTube returns 403 for a NewPipe URL, the app skips that rejected client and switches playback profiles instead of retrying the same URL.
 
         ### Maintenance
         - **Audio Architecture & DSP**: Seamless synchronization of WSOLA time-stretch engines and INT8 beat tracking models.

@@ -225,10 +225,14 @@ class YouTubeStreamResolver(
         // byte with 403; NewPipe's WEB URL remains fetchable and also avoids waiting on a failed
         // PO-token warm-up. Uploads have no public watch page, so they stay on signed-in Innertube.
         if (videoId !in accountOnlyVideos) {
-            val newPipeStream = newPipeResolver.resolve(videoId, quality)
-            if (newPipeStream != null) {
+            val isNewPipeBlocked = isClientRejected(videoId, "NEWPIPE")
+            val newPipeStream = if (!isNewPipeBlocked) newPipeResolver.resolve(videoId, quality) else null
+            if (newPipeStream != null && !isClientRejected(videoId, newPipeStream.clientKey)) {
                 streams[cacheKey] = newPipeStream
                 return newPipeStream
+            }
+            if (newPipeStream != null || isNewPipeBlocked) {
+                Log.w(TAG, "Skipping CDN-rejected NewPipe client for $videoId")
             }
             if (quality == AudioQuality.MAX) {
                 // MAX has no Innertube equivalent, so its fallback is HIGH. Warn only if that
@@ -557,8 +561,34 @@ class YouTubeStreamResolver(
         prefetchExecutor.execute { minter.warmUp(videoId) }
     }
 
-    private fun cached(cacheKey: String): ResolvedStream? =
-        streams[cacheKey]?.takeIf { it.expiresAtMs > System.currentTimeMillis() + 60_000 }
+    private fun cached(cacheKey: String): ResolvedStream? {
+        val stream = streams[cacheKey] ?: return null
+        if (stream.expiresAtMs <= System.currentTimeMillis() + 60_000) {
+            streams.remove(cacheKey, stream)
+            return null
+        }
+        val videoId = cacheKey.substringBefore(':')
+        return stream.takeUnless { isClientRejected(videoId, it.clientKey) }
+    }
+
+    private fun isClientRejected(videoId: String, clientKey: String): Boolean {
+        if (videoId.isBlank() || clientKey.isBlank()) return false
+        val now = System.currentTimeMillis()
+        val key = "$videoId:$clientKey"
+        val rejectedUntil = rejectedClientsUntil[key]
+        if (rejectedUntil != null) {
+            if (rejectedUntil > now) return true
+            rejectedClientsUntil.remove(key, rejectedUntil)
+        }
+        if (clientKey.contains("WEB") || clientKey.contains("NEWPIPE")) {
+            val newPipeUntil = rejectedClientsUntil["$videoId:NEWPIPE"]
+            if (newPipeUntil != null) {
+                if (newPipeUntil > now) return true
+                rejectedClientsUntil.remove("$videoId:NEWPIPE", newPipeUntil)
+            }
+        }
+        return false
+    }
 
     /**
      * The bitrate of the stream already resolved for [videoId], or 0 when none is known.
@@ -609,8 +639,11 @@ class YouTubeStreamResolver(
         YouTubePoTokenMinter.poTokenOf(stream.url).takeIf(String::isNotBlank)?.let { rejected ->
             poTokenMinter?.invalidate(videoId, rejected)
         }
-        rejectedClientsUntil["$videoId:${stream.clientKey}"] =
-            System.currentTimeMillis() + REJECTED_CLIENT_BACKOFF_MS
+        val backoffUntil = System.currentTimeMillis() + REJECTED_CLIENT_BACKOFF_MS
+        rejectedClientsUntil["$videoId:${stream.clientKey}"] = backoffUntil
+        if (stream.clientKey.contains("WEB") || stream.clientKey.contains("NEWPIPE")) {
+            rejectedClientsUntil["$videoId:NEWPIPE"] = backoffUntil
+        }
         // Resolution counts as successful the moment a URL is minted, which happens well before
         // the CDN judges it. Leaving a refused client pinned as "last successful" would send the
         // next track straight back to it.

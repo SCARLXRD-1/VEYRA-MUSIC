@@ -37,6 +37,14 @@ import dev.sfg.veyra.connect.R
  * top of it.
  */
 internal fun playbackErrorMessage(context: Context, error: Throwable): String {
+    val httpCode = playbackHttpResponseCode(error)
+    if (httpCode != null) {
+        return when (httpCode) {
+            403 -> context.getString(R.string.msg_youtube_refused)
+            404, 410 -> context.getString(R.string.msg_track_unavailable)
+            else -> context.getString(R.string.msg_playback_failed)
+        }
+    }
     var current: Throwable? = error
     while (current != null) {
         val msg = current.message.orEmpty()

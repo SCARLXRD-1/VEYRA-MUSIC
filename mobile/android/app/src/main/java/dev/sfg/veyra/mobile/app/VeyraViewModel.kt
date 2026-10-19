@@ -108,6 +108,8 @@ internal fun desktopTransferPlan(track: Track?, queue: List<Track>, repeatMode: 
 @OptIn(FlowPreview::class)
 class VeyraViewModel(application: Application) : AndroidViewModel(application) {
     private val graph = VeyraGraph.from(application)
+    private val mutablePlayerOpenRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val playerOpenRequests = mutablePlayerOpenRequests.asSharedFlow()
     val sessionQrPayload = graph.sessionQrPairing.qrPayload
     val sessionQrStatus = graph.sessionQrPairing.status
     fun startSessionQr() = graph.sessionQrPairing.startReceiver()
@@ -559,6 +561,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         Log.d(TAG, "playAll: ${tracks.size} tracks, startIndex=$startIndex, contextTitle='$contextTitle'")
         if (tracks.isEmpty()) return
+        mutablePlayerOpenRequests.tryEmit(Unit)
         val safeIndex = startIndex.coerceIn(tracks.indices)
         val source = contextTitle.takeIf { it.isMeaningfulPlaybackSource() }
             ?: tracks[safeIndex].album.takeIf { it.isMeaningfulPlaybackSource() }

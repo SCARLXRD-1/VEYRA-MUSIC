@@ -173,6 +173,12 @@ fun VeyraApp(viewModel: VeyraViewModel) {
 
     val isTv = dev.sfg.veyra.mobile.ui.tv.isTvMode()
 
+    LaunchedEffect(viewModel, isTv) {
+        if (isTv) {
+            viewModel.playerOpenRequests.collect { playerOpen = true }
+        }
+    }
+
     CompositionLocalProvider(
         LocalGlass provides glass,
         LocalGlassScene provides glassScene,
