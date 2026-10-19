@@ -162,7 +162,7 @@ jobs:
       - name: Test Veyra Packages
         if: steps.release.outputs.mobile_only != 'true'
         run: |
-          bun install --cwd veyra-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
           bun run --cwd veyra-packages test
 
       - name: Set up JDK 17
@@ -242,7 +242,7 @@ jobs:
           npm ci
           npm run build:native
           node scripts/stage-package-native.mjs linux-arm64 native-inputs
-          bun install --cwd veyra-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
           bun run --cwd veyra-packages build:release linux-arm64
           manager_version="${{ needs.prepare.outputs.manager_version }}"
           bundle="veyra-packages/dist/releases/orchard-packages-$manager_version-linux-arm64"
@@ -320,7 +320,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/stage-package-native.mjs win32-${{ matrix.arch }} native-inputs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          bun install --cwd veyra-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           bun run --cwd veyra-packages build:release win32-${{ matrix.arch }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -404,7 +404,7 @@ jobs:
             file "$addon" | grep -q '${{ matrix.file_arch }}'
           done
           node scripts/stage-package-native.mjs darwin-${{ matrix.arch }} native-inputs
-          bun install --cwd veyra-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
           bun run --cwd veyra-packages build:release darwin-${{ matrix.arch }}
           manager_version='${{ needs.prepare.outputs.manager_version }}'
           bundle="veyra-packages/dist/releases/orchard-packages-$manager_version-darwin-${{ matrix.arch }}"
@@ -476,7 +476,7 @@ jobs:
           npm ci
           npm run build:native
           node scripts/stage-package-native.mjs linux-x64 native-inputs
-          bun install --cwd veyra-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
           bun run --cwd veyra-packages build:release linux-x64
           bun run --cwd veyra-packages package:linux linux-x64
           bun run --cwd veyra-packages package:flatpak linux-x64
@@ -577,7 +577,7 @@ jobs:
       - name: Install package-service dependencies
         run: |
           npm ci
-          bun install --cwd veyra-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile --ignore-scripts
 
       - name: Download native inputs
         uses: actions/download-artifact@v8
@@ -861,9 +861,17 @@ jobs:
           version='${{ needs.prepare.outputs.version }}'
           for f in *; do
             if [[ -f "$f" ]]; then
-              if [[ "$f" =~ ^Orchard-Setup-.*\.exe$ ]]; then
-                cp "$f" "veyramusic.exe"
-                cp "$f" "veyramusic-setup-${version}.exe"
+              if [[ "$f" =~ \.exe$ ]]; then
+                if [[ "$f" != "veyramusic.exe" && "$f" != "veyramusic-setup-${version}.exe" ]]; then
+                  cp "$f" "veyramusic.exe"
+                  cp "$f" "veyramusic-setup-${version}.exe"
+                fi
+              fi
+              if [[ "$f" =~ \.apk$ ]]; then
+                if [[ "$f" != "veyramusic.apk" && "$f" != "veyramusic-${version}.apk" ]]; then
+                  cp "$f" "veyramusic.apk"
+                  cp "$f" "veyramusic-${version}.apk"
+                fi
               fi
             fi
           done

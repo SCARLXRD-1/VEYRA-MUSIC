@@ -75,17 +75,26 @@ for (const target of targets) {
 
   const appName = windows ? "orchard-packages.exe" : "orchard-packages";
   const backendName = windows ? "orchard-packages-backend.exe" : "orchard-packages-backend";
+  const veyraAppName = windows ? "veyra-packages.exe" : "veyra-packages";
+  const veyraBackendName = windows ? "veyra-packages-backend.exe" : "veyra-packages-backend";
   await Promise.all([
     cp(path.join(neutralinoOutput, shellNames[target]), path.join(bundleRoot, appName)),
+    cp(path.join(neutralinoOutput, shellNames[target]), path.join(bundleRoot, veyraAppName)),
     cp(path.join(neutralinoOutput, "resources.neu"), path.join(bundleRoot, "resources.neu")),
     cp(
       path.join(projectRoot, "dist", "backend", target, backendName),
       path.join(extensionRoot, backendName)
+    ),
+    cp(
+      path.join(projectRoot, "dist", "backend", target, backendName),
+      path.join(extensionRoot, veyraBackendName)
     )
   ]);
   if (!windows) {
     await chmod(path.join(bundleRoot, appName), 0o755);
+    await chmod(path.join(bundleRoot, veyraAppName), 0o755);
     await chmod(path.join(extensionRoot, backendName), 0o755);
+    await chmod(path.join(extensionRoot, veyraBackendName), 0o755);
   }
   console.log(`${target}: ${bundleRoot}`);
 }

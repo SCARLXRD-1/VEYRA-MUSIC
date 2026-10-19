@@ -23,18 +23,58 @@ fi
 
 rm -rf -- "$flatpak_dir/bundle" "$flatpak_dir/build" "$flatpak_dir/repo"
 mkdir -p "$flatpak_dir/bundle/extensions" "$output_dir"
-cp "$release_dir/orchard-packages" "$flatpak_dir/bundle/orchard-packages"
+if [ -f "$release_dir/veyra-packages" ]; then
+  cp "$release_dir/veyra-packages" "$flatpak_dir/bundle/veyra-packages"
+fi
+if [ -f "$release_dir/orchard-packages" ]; then
+  cp "$release_dir/orchard-packages" "$flatpak_dir/bundle/orchard-packages"
+fi
 cp "$release_dir/resources.neu" "$flatpak_dir/bundle/resources.neu"
-cp "$release_dir/extensions/orchard-packages-backend" "$flatpak_dir/bundle/extensions/orchard-packages-backend"
-cp "$flatpak_dir/orchard" "$flatpak_dir/bundle/orchard"
-cp "$flatpak_dir/orchard-packages-launcher" "$flatpak_dir/bundle/orchard-packages-launcher"
-cp "$repository_dir/packaging/arch/orchard-packages.desktop" "$flatpak_dir/bundle/dev.sfg.orchard.desktop"
-cp "$flatpak_dir/dev.sfg.orchard.png" "$flatpak_dir/bundle/dev.sfg.orchard.png"
-cp "$flatpak_dir/dev.sfg.orchard.metainfo.xml" "$flatpak_dir/bundle/dev.sfg.orchard.metainfo.xml"
+if [ -f "$release_dir/extensions/veyra-packages-backend" ]; then
+  cp "$release_dir/extensions/veyra-packages-backend" "$flatpak_dir/bundle/extensions/veyra-packages-backend"
+fi
+if [ -f "$release_dir/extensions/orchard-packages-backend" ]; then
+  cp "$release_dir/extensions/orchard-packages-backend" "$flatpak_dir/bundle/extensions/orchard-packages-backend"
+fi
+
+if [ -f "$flatpak_dir/veyra" ]; then
+  cp "$flatpak_dir/veyra" "$flatpak_dir/bundle/veyra"
+elif [ -f "$flatpak_dir/orchard" ]; then
+  cp "$flatpak_dir/orchard" "$flatpak_dir/bundle/veyra"
+fi
+
+if [ -f "$flatpak_dir/veyra-packages-launcher" ]; then
+  cp "$flatpak_dir/veyra-packages-launcher" "$flatpak_dir/bundle/veyra-packages-launcher"
+elif [ -f "$flatpak_dir/orchard-packages-launcher" ]; then
+  cp "$flatpak_dir/orchard-packages-launcher" "$flatpak_dir/bundle/veyra-packages-launcher"
+fi
+
+if [ -f "$repository_dir/packaging/arch/veyra-packages.desktop" ]; then
+  cp "$repository_dir/packaging/arch/veyra-packages.desktop" "$flatpak_dir/bundle/dev.akashi.veyra.desktop"
+elif [ -f "$repository_dir/packaging/arch/orchard-packages.desktop" ]; then
+  cp "$repository_dir/packaging/arch/orchard-packages.desktop" "$flatpak_dir/bundle/dev.akashi.veyra.desktop"
+fi
+
+if [ -f "$flatpak_dir/dev.sfg.veyra.png" ]; then
+  cp "$flatpak_dir/dev.sfg.veyra.png" "$flatpak_dir/bundle/dev.akashi.veyra.png"
+elif [ -f "$flatpak_dir/dev.sfg.orchard.png" ]; then
+  cp "$flatpak_dir/dev.sfg.orchard.png" "$flatpak_dir/bundle/dev.akashi.veyra.png"
+fi
+
+if [ -f "$flatpak_dir/dev.sfg.veyra.metainfo.xml" ]; then
+  cp "$flatpak_dir/dev.sfg.veyra.metainfo.xml" "$flatpak_dir/bundle/dev.sfg.veyra.metainfo.xml"
+elif [ -f "$flatpak_dir/dev.sfg.orchard.metainfo.xml" ]; then
+  cp "$flatpak_dir/dev.sfg.orchard.metainfo.xml" "$flatpak_dir/bundle/dev.sfg.veyra.metainfo.xml"
+fi
+
+flatpak_manifest="$flatpak_dir/dev.sfg.veyra.yml"
+if [ ! -f "$flatpak_manifest" ]; then
+  flatpak_manifest="$flatpak_dir/dev.sfg.orchard.yml"
+fi
 
 flatpak-builder --disable-rofiles-fuse --arch="$flatpak_arch" --force-clean --repo="$flatpak_dir/repo" \
-  "$flatpak_dir/build" "$flatpak_dir/dev.sfg.orchard.yml"
+  "$flatpak_dir/build" "$flatpak_manifest"
 flatpak build-bundle --arch="$flatpak_arch" \
-  "$flatpak_dir/repo" "$output" dev.sfg.orchard
+  "$flatpak_dir/repo" "$output" dev.akashi.veyra
 
 printf '%s\n' "$output"

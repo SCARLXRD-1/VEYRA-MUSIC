@@ -1,7 +1,7 @@
 # Maintainer: AKASHI DEV <contact@akashi.dev>
 
 pkgname=veyra-packages
-pkgver=5.0.0
+pkgver=1.0.0
 pkgrel=4
 pkgdesc='Small desktop installer and version manager for Veyra Music'
 arch=('x86_64')

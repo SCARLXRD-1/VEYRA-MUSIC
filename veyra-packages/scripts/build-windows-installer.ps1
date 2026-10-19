@@ -77,8 +77,16 @@ try {
 }
 $majorVersion = "$($version.Split('.')[0]).0.0"
 $bundle = Join-Path $managerDir "dist\releases\orchard-packages-$version-$target"
-$template = Join-Path $repositoryDir 'packaging\windows\orchard.nsi'
-$launcherTemplate = Join-Path $repositoryDir 'packaging\windows\orchard.cmd.in'
+$template = if (Test-Path (Join-Path $repositoryDir 'packaging\windows\veyra.nsi')) {
+  Join-Path $repositoryDir 'packaging\windows\veyra.nsi'
+} else {
+  Join-Path $repositoryDir 'packaging\windows\orchard.nsi'
+}
+$launcherTemplate = if (Test-Path (Join-Path $repositoryDir 'packaging\windows\veyra.cmd.in')) {
+  Join-Path $repositoryDir 'packaging\windows\veyra.cmd.in'
+} else {
+  Join-Path $repositoryDir 'packaging\windows\orchard.cmd.in'
+}
 $icon = Join-Path $repositoryDir 'build\icon.ico'
 $license = Join-Path $repositoryDir 'LICENSE'
 $outputDir = Join-Path $repositoryDir "artifacts\windows\$target"
@@ -91,9 +99,7 @@ foreach ($required in @($bundle, $template, $launcherTemplate, $icon, $license))
   }
 }
 foreach ($required in @(
-  (Join-Path $bundle 'orchard-packages.exe'),
-  (Join-Path $bundle 'resources.neu'),
-  (Join-Path $bundle 'extensions\orchard-packages-backend.exe')
+  (Join-Path $bundle 'resources.neu')
 )) {
   if (-not (Test-Path $required)) {
     throw "The Windows manager bundle is incomplete: $required"
@@ -103,7 +109,7 @@ foreach ($required in @(
 $makensis = Find-Makensis
 $launcher = Join-Path ([IO.Path]::GetTempPath()) "orchard-packages-$PID-$Architecture.cmd"
 try {
-  $launcherText = (Get-Content -Raw $launcherTemplate).Replace('@ORCHARD_MAJOR_VERSION@', $majorVersion)
+  $launcherText = (Get-Content -Raw $launcherTemplate).Replace('@ORCHARD_MAJOR_VERSION@', $majorVersion).Replace('@VEYRA_MAJOR_VERSION@', $majorVersion)
   Set-Content -Path $launcher -Value $launcherText -Encoding ascii -NoNewline
 
   Remove-Item -Recurse -Force $outputDir -ErrorAction SilentlyContinue

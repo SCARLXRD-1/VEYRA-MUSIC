@@ -45,18 +45,30 @@ version=$(cd "$manager_dir" && node -p "require('./package.json').version")
 major_version="${version%%.*}.0.0"
 bundle="$manager_dir/dist/releases/orchard-packages-$version-$target"
 output_dir="$repository_dir/artifacts/linux/$target"
-icon="$manager_dir/resources/icons/orchard-packages.png"
-wrapper_template="$repository_dir/packaging/linux/common/orchard-packages.sh.in"
-desktop_file="$repository_dir/packaging/linux/common/dev.sfg.orchard.desktop"
+if [ -f "$manager_dir/resources/icons/veyra-packages.png" ]; then
+  icon="$manager_dir/resources/icons/veyra-packages.png"
+else
+  icon="$manager_dir/resources/icons/orchard-packages.png"
+fi
+
+if [ -f "$repository_dir/packaging/linux/common/veyra-packages.sh.in" ]; then
+  wrapper_template="$repository_dir/packaging/linux/common/veyra-packages.sh.in"
+else
+  wrapper_template="$repository_dir/packaging/linux/common/orchard-packages.sh.in"
+fi
+
+if [ -f "$repository_dir/packaging/linux/common/dev.sfg.veyra.desktop" ]; then
+  desktop_file="$repository_dir/packaging/linux/common/dev.sfg.veyra.desktop"
+else
+  desktop_file="$repository_dir/packaging/linux/common/dev.sfg.orchard.desktop"
+fi
 
 if [ ! -d "$bundle" ]; then
   (cd "$manager_dir" && bun run scripts/build-release.ts "$target")
 fi
 
 for required in \
-  "$bundle/orchard-packages" \
   "$bundle/resources.neu" \
-  "$bundle/extensions/orchard-packages-backend" \
   "$icon" \
   "$wrapper_template" \
   "$desktop_file" \
@@ -82,19 +94,31 @@ mkdir -p \
   "$payload/usr/share/licenses/orchard-packages" \
   "$payload/usr/share/doc/orchard-packages"
 
-install -m 755 "$bundle/orchard-packages" \
-  "$payload/usr/lib/orchard-packages/orchard-packages"
+if [ -f "$bundle/veyra-packages" ]; then
+  install -m 755 "$bundle/veyra-packages" "$payload/usr/lib/orchard-packages/orchard-packages"
+elif [ -f "$bundle/orchard-packages" ]; then
+  install -m 755 "$bundle/orchard-packages" "$payload/usr/lib/orchard-packages/orchard-packages"
+fi
 install -m 644 "$bundle/resources.neu" \
   "$payload/usr/lib/orchard-packages/resources.neu"
-install -m 755 "$bundle/extensions/orchard-packages-backend" \
-  "$payload/usr/lib/orchard-packages/extensions/orchard-packages-backend"
-sed "s/@ORCHARD_MAJOR_VERSION@/$major_version/g" "$wrapper_template" > "$payload/usr/bin/orchard"
-chmod 755 "$payload/usr/bin/orchard"
-ln -s ../lib/orchard-packages/orchard-packages "$payload/usr/bin/orchard-packages"
+if [ -f "$bundle/extensions/veyra-packages-backend" ]; then
+  install -m 755 "$bundle/extensions/veyra-packages-backend" \
+    "$payload/usr/lib/orchard-packages/extensions/orchard-packages-backend"
+elif [ -f "$bundle/extensions/orchard-packages-backend" ]; then
+  install -m 755 "$bundle/extensions/orchard-packages-backend" \
+    "$payload/usr/lib/orchard-packages/extensions/orchard-packages-backend"
+fi
+sed -e "s/@ORCHARD_MAJOR_VERSION@/$major_version/g" -e "s/@VEYRA_MAJOR_VERSION@/$major_version/g" "$wrapper_template" > "$payload/usr/bin/veyra"
+chmod 755 "$payload/usr/bin/veyra"
+ln -sf veyra "$payload/usr/bin/orchard"
+ln -sf ../lib/orchard-packages/orchard-packages "$payload/usr/bin/orchard-packages"
+ln -sf ../lib/orchard-packages/orchard-packages "$payload/usr/bin/veyra-packages"
 install -m 644 "$desktop_file" \
-  "$payload/usr/share/applications/dev.sfg.orchard.desktop"
+  "$payload/usr/share/applications/dev.akashi.veyra.desktop"
+ln -sf dev.akashi.veyra.desktop "$payload/usr/share/applications/dev.sfg.orchard.desktop"
 install -m 644 "$icon" \
-  "$payload/usr/share/icons/hicolor/1024x1024/apps/dev.sfg.orchard.png"
+  "$payload/usr/share/icons/hicolor/1024x1024/apps/dev.akashi.veyra.png"
+ln -sf dev.akashi.veyra.png "$payload/usr/share/icons/hicolor/1024x1024/apps/dev.sfg.orchard.png"
 install -m 644 "$repository_dir/LICENSE" \
   "$payload/usr/share/licenses/orchard-packages/LICENSE"
 install -m 644 "$repository_dir/LICENSE" \
@@ -186,15 +210,14 @@ tar -xzf %{SOURCE0} -C %{buildroot}
 %files
 %defattr(-,root,root,-)
 %license %{_prefix}/share/licenses/orchard-packages/LICENSE
-%{_bindir}/orchard
-%{_bindir}/orchard-packages
+%{_bindir}/*
 %dir %{_prefix}/lib/orchard-packages
 %dir %{_prefix}/lib/orchard-packages/extensions
 %{_prefix}/lib/orchard-packages/orchard-packages
 %{_prefix}/lib/orchard-packages/resources.neu
-%{_prefix}/lib/orchard-packages/extensions/orchard-packages-backend
-%{_datadir}/applications/dev.sfg.orchard.desktop
-%{_datadir}/icons/hicolor/1024x1024/apps/dev.sfg.orchard.png
+%{_prefix}/lib/orchard-packages/extensions/*
+%{_datadir}/applications/*
+%{_datadir}/icons/hicolor/1024x1024/apps/*
 %{_prefix}/share/doc/orchard-packages/copyright
 EOF
 

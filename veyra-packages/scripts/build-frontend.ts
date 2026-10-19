@@ -57,6 +57,7 @@ if (!result.success) {
   throw new Error("Frontend compilation failed.");
 }
 
+const iconSource = (await exists(bundledIcon)) ? bundledIcon : repositoryIcon;
 await Promise.all([
   cp(path.join(sourceRoot, "index.html"), path.join(resourcesRoot, "index.html")),
   cp(path.join(sourceRoot, "style.css"), path.join(resourcesRoot, "style.css")),
@@ -64,10 +65,8 @@ await Promise.all([
     path.join(projectRoot, "node_modules", "@neutralinojs", "lib", "dist", "neutralino.js"),
     path.join(resourcesRoot, "js", "neutralino.js")
   ),
-  cp(
-    (await exists(bundledIcon)) ? bundledIcon : repositoryIcon,
-    path.join(resourcesRoot, "icons", "orchard-packages.png")
-  )
+  cp(iconSource, path.join(resourcesRoot, "icons", "orchard-packages.png")),
+  cp(iconSource, path.join(resourcesRoot, "icons", "veyra-packages.png"))
 ]);
 
 console.log(`Frontend resources written to ${resourcesRoot}`);
