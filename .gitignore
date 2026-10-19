@@ -33,6 +33,9 @@ native-audio-rust/target/
 native-audio-rust/build/
 native-audio-rust/vendor/earmark/target/
 *.apk
+*.jks
+*.keystore
+mobile/android/keystore/
 releases/desktop/binaries/*.tar.gz
 releases/desktop/binaries/*.zip
 releases/desktop/binaries/veyra-*
