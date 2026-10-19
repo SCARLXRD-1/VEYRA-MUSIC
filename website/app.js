@@ -15,20 +15,35 @@
     desktop: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
   };
 
-  // Hashes oficiales verificados v1.0.0
+  // Hashes oficiales verificados
   const OFFICIAL_HASHES = {
+    'd353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416': {
+      platform: 'Android Móvil / Smart TV (v1.0.1)',
+      file: 'app-release.apk',
+      size: '162 MB'
+    },
+    'ef42b345dcfaded8cd7495b695f395482db04dbcf3fb2667ec930be7dc6218b2': {
+      platform: 'Android Móvil / Smart TV (v1.0.1)',
+      file: 'app-release.apk',
+      size: '162 MB'
+    },
+    '79eea24a888cc99de6aad1a26bc4d5fbca7d03b6de027464d478cd5700e09510': {
+      platform: 'Android Móvil / Smart TV (v1.0.0)',
+      file: 'app-release.apk',
+      size: '129 MB'
+    },
     'b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea': {
       platform: 'Android Móvil / Smart TV',
       file: 'app-release.apk',
       size: '129 MB'
     },
     '380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac': {
-      platform: 'Linux Desktop (x64)',
+      platform: 'Linux Desktop (x64) (v1.0.0)',
       file: 'veyra-v1.0.0-linux-x64.tar.gz',
       size: '394 MB'
     },
     'b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29': {
-      platform: 'Windows Desktop (x64)',
+      platform: 'Windows Desktop (x64) (v1.0.0)',
       file: 'veyra-v1.0.0-windows-x64.zip',
       size: '343 MB'
     }
@@ -37,8 +52,8 @@
   const IS_WEB_HOSTED = window.location.protocol === 'http:' || window.location.protocol === 'https:';
 
   const DOWNLOAD_URLS = {
-    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk',
-    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk',
+    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk',
+    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk',
     linux: IS_WEB_HOSTED ? '/download/linux' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz',
     windows: IS_WEB_HOSTED ? '/download/windows' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip'
   };
@@ -56,10 +71,10 @@
           name: 'Smart TV & Android TV',
           iconSvg: ICONS.tv,
           arch: 'Universal APK',
-          btnLabel: 'Descargar APK TV (129 MB)',
+          btnLabel: 'Descargar APK TV (162 MB)',
           url: DOWNLOAD_URLS.tv,
           filename: 'app-release.apk',
-          meta: 'Formato: Leanback APK &bull; D-Pad Remote Ready &bull; 129 MB'
+          meta: 'Formato: Leanback APK &bull; D-Pad Remote Ready &bull; 162 MB'
         };
       }
       return {
@@ -67,10 +82,10 @@
         name: 'Android Móvil & Tablet',
         iconSvg: ICONS.mobile,
         arch: 'Universal APK',
-        btnLabel: 'Descargar APK Móvil (129 MB)',
+        btnLabel: 'Descargar APK Móvil (162 MB)',
         url: DOWNLOAD_URLS.mobile,
         filename: 'app-release.apk',
-        meta: 'Formato: APK Universal &bull; Android 12 - 15 &bull; 129 MB'
+        meta: 'Formato: APK Universal &bull; Android 7.0 - 15 &bull; 162 MB'
       };
     }
 
@@ -183,26 +198,25 @@
   }
 
   function setupCopyButtons() {
-    const copyBtns = document.querySelectorAll('.copy-btn');
-    copyBtns.forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const hash = btn.dataset.checksum;
-        if (!hash) return;
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+      const hash = btn.dataset.checksum;
+      if (!hash) return;
 
-        try {
-          await navigator.clipboard.writeText(hash);
-          showToast('Firma SHA-256 copiada al portapapeles');
-        } catch {
-          // Fallback para contextos sin clipboard API
-          const tempInput = document.createElement('input');
-          tempInput.value = hash;
-          document.body.appendChild(tempInput);
-          tempInput.select();
-          document.execCommand('copy');
-          document.body.removeChild(tempInput);
-          showToast('Firma SHA-256 copiada');
-        }
-      });
+      try {
+        await navigator.clipboard.writeText(hash);
+        showToast('Firma SHA-256 copiada al portapapeles');
+      } catch {
+        // Fallback para contextos sin clipboard API
+        const tempInput = document.createElement('input');
+        tempInput.value = hash;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showToast('Firma SHA-256 copiada');
+      }
     });
   }
 
@@ -259,7 +273,7 @@
         resultBox.className = 'verify-result is-invalid';
         resultBox.innerHTML = `
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <div><strong>La firma no coincide:</strong> El hash ingresado no corresponde a ningún paquete oficial de la versión v1.0.0. Verifica la integridad del archivo descargado.</div>
+          <div><strong>La firma no coincide:</strong> El hash ingresado no corresponde a ningún paquete oficial verificado. Comprueba la integridad del archivo descargado.</div>
         `;
       }
     }
@@ -490,14 +504,351 @@
   }
 
   function setupDownloadFeedback() {
-    const triggers = document.querySelectorAll('.download-trigger, #detected-download-btn');
-    triggers.forEach(btn => {
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.download-trigger, #detected-download-btn, .history-asset-chip');
+      if (!btn) return;
       btn.setAttribute('target', 'download_target_frame');
-      btn.addEventListener('click', () => {
-        const filename = btn.getAttribute('download') || btn.dataset.filename || 'el paquete';
-        showToast(`Descargando ${filename} directamente...`);
+      const filename = btn.getAttribute('download') || btn.dataset.filename || 'el paquete oficial';
+      showToast(`Descargando ${filename} directamente...`);
+    });
+  }
+
+  /* -------------------------------------------------------------------------
+   * 9. Modal de Historial de Versiones
+   * ------------------------------------------------------------------------- */
+  function setupVersionHistoryModal() {
+    const modal = document.getElementById('version-history-modal');
+    const openBtn = document.getElementById('version-history-btn');
+    const closeBtn = document.getElementById('history-modal-close');
+
+    if (!modal || !openBtn) return;
+
+    function openModal() {
+      modal.classList.remove('is-hidden');
+    }
+
+    function closeModal() {
+      modal.classList.add('is-hidden');
+    }
+
+    openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('is-hidden')) {
+        closeModal();
+      }
+    });
+  }
+
+  /* -------------------------------------------------------------------------
+   * 10. Carga Dinámica de Releases y Sincronización Automática
+   * ------------------------------------------------------------------------- */
+  function formatBytes(bytes) {
+    if (!bytes || isNaN(bytes)) return '';
+    const mb = Math.round(bytes / (1024 * 1024));
+    return `${mb} MB`;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function getAssetSha256(asset) {
+    if (asset.digest && asset.digest.startsWith('sha256:')) {
+      return asset.digest.replace('sha256:', '');
+    }
+    for (const [hash, info] of Object.entries(OFFICIAL_HASHES)) {
+      if (info.file === asset.name) return hash;
+    }
+    return '';
+  }
+
+  // Encuentra el paquete más reciente para la plataforma indicada
+  function findLatestPlatformAsset(releases, platformKey) {
+    for (const rel of releases) {
+      if (!rel.assets || !rel.assets.length) continue;
+      const asset = rel.assets.find(a => {
+        const name = (a.name || '').toLowerCase();
+        if (platformKey === 'mobile' || platformKey === 'tv') {
+          return name.endsWith('.apk');
+        }
+        if (platformKey === 'linux') {
+          return name.includes('linux') && (name.endsWith('.tar.gz') || name.endsWith('.zip') || name.endsWith('.appimage') || name.endsWith('.deb'));
+        }
+        if (platformKey === 'windows') {
+          return name.includes('windows') && (name.endsWith('.zip') || name.endsWith('.exe'));
+        }
+        return false;
+      });
+      if (asset) {
+        return { release: rel, asset };
+      }
+    }
+    return null;
+  }
+
+  async function fetchReleasesWithCache() {
+    const CACHE_KEY = 'veyra_releases_cache_v2';
+    const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < CACHE_TTL && Array.isArray(parsed.data)) {
+          return parsed.data;
+        }
+      }
+    } catch {
+      // Ignora errores de cuota o parseo
+    }
+
+    let releases = null;
+
+    // 1. Consulta GitHub Releases API
+    try {
+      const res = await fetch('https://api.github.com/repos/SCARLXRD-1/VEYRA-MUSIC/releases', {
+        headers: { Accept: 'application/vnd.github.v3+json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          releases = data;
+        }
+      }
+    } catch {
+      // Offline / error de red
+    }
+
+    // 2. Fallback a releases.json local estático
+    if (!releases) {
+      try {
+        const res = await fetch('./releases.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            releases = data;
+          }
+        }
+      } catch {
+        // Fallback local no disponible
+      }
+    }
+
+    if (releases) {
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          timestamp: Date.now(),
+          data: releases
+        }));
+      } catch {
+        // Ignora almacenamiento lleno
+      }
+    }
+
+    return releases;
+  }
+
+  function renderVersionHistory(releases) {
+    const container = document.getElementById('history-list-container');
+    if (!container || !Array.isArray(releases) || !releases.length) return;
+
+    const published = releases.filter(r => !r.draft);
+    if (!published.length) {
+      container.innerHTML = '<div class="history-loading">No se encontraron versiones oficiales.</div>';
+      return;
+    }
+
+    const html = published.map((rel, index) => {
+      const isLatest = index === 0;
+      const dateStr = rel.published_at || rel.created_at;
+      let formattedDate = '';
+      if (dateStr) {
+        try {
+          formattedDate = new Date(dateStr).toLocaleDateString('es-MX', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+        } catch {
+          formattedDate = dateStr.slice(0, 10);
+        }
+      }
+
+      // Filtra y crea chips de descarga para binarios oficiales
+      const binaryAssets = (rel.assets || []).filter(a => {
+        const n = (a.name || '').toLowerCase();
+        return n.endsWith('.apk') || n.endsWith('.tar.gz') || n.endsWith('.zip') || n.endsWith('.exe') || n.endsWith('.appimage') || n.endsWith('.deb');
+      });
+
+      const chipsHtml = binaryAssets.map(asset => {
+        const name = asset.name || '';
+        let label = name;
+        let iconSvg = ICONS.desktop;
+
+        if (name.endsWith('.apk')) {
+          label = 'Android APK';
+          iconSvg = ICONS.mobile;
+        } else if (name.includes('linux')) {
+          label = 'Linux x64';
+          iconSvg = ICONS.linux;
+        } else if (name.includes('windows')) {
+          label = 'Windows x64';
+          iconSvg = ICONS.windows;
+        }
+
+        const sizeStr = formatBytes(asset.size);
+        const displayLabel = sizeStr ? `${label} (${sizeStr})` : label;
+
+        return `
+          <a href="${asset.browser_download_url}" class="history-asset-chip download-trigger" download="${escapeHtml(name)}" data-filename="${escapeHtml(name)}" target="download_target_frame">
+            ${iconSvg}
+            <span>${escapeHtml(displayLabel)}</span>
+          </a>
+        `;
+      }).join('');
+
+      let cleanBody = (rel.body || '').trim();
+      const firstLines = cleanBody.split('\n').filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('---')).slice(0, 3).join('\n');
+      if (firstLines) {
+        cleanBody = firstLines;
+      }
+
+      return `
+        <div class="history-item ${isLatest ? 'history-item--latest' : ''}">
+          <div class="history-item-top">
+            <span class="history-version-tag">${escapeHtml(rel.tag_name)}</span>
+            <div class="history-badges-wrap">
+              ${isLatest 
+                ? '<span class="history-badge history-badge--latest"><span class="pulse-dot"></span> Más actual</span>' 
+                : '<span class="history-badge">Archivada</span>'
+              }
+              ${formattedDate ? `<span class="history-date">${escapeHtml(formattedDate)}</span>` : ''}
+            </div>
+          </div>
+          <div class="history-item-name">${escapeHtml(rel.name || rel.tag_name)}</div>
+          ${cleanBody ? `<div class="history-item-body">${escapeHtml(cleanBody)}</div>` : ''}
+          ${chipsHtml ? `<div class="history-assets-row">${chipsHtml}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  function updateDynamicPlatformCards(releases) {
+    if (!Array.isArray(releases) || !releases.length) return;
+    const published = releases.filter(r => !r.draft);
+    if (!published.length) return;
+
+    const latestRelease = published[0];
+
+    // 1. Actualiza Header y Hero con la versión más reciente global
+    const headerVersionText = document.getElementById('header-version-text');
+    if (headerVersionText && latestRelease.tag_name) {
+      headerVersionText.textContent = `${latestRelease.tag_name} Oficial`;
+    }
+
+    const heroPill = document.getElementById('hero-pill-version');
+    if (heroPill && latestRelease.tag_name) {
+      const cleanVer = latestRelease.tag_name.replace(/^v/, '');
+      heroPill.innerHTML = `Versión ${cleanVer} Estable &bull; Distribución Oficial`;
+    }
+
+    // 2. Registra hashes de todos los assets en OFFICIAL_HASHES
+    published.forEach(rel => {
+      (rel.assets || []).forEach(asset => {
+        const hash = getAssetSha256(asset);
+        if (hash && !OFFICIAL_HASHES[hash]) {
+          OFFICIAL_HASHES[hash] = {
+            platform: `${rel.tag_name} (${asset.name})`,
+            file: asset.name,
+            size: formatBytes(asset.size)
+          };
+        }
       });
     });
+
+    // 3. Plataformas: Actualiza cada tarjeta con SU versión más actual
+    const platforms = [
+      { id: 'mobile', key: 'mobile', btnName: 'Descargar APK' },
+      { id: 'tv', key: 'tv', btnName: 'Descargar APK TV' },
+      { id: 'linux', key: 'linux', btnName: 'Descargar Tar.gz' },
+      { id: 'windows', key: 'windows', btnName: 'Descargar Zip' }
+    ];
+
+    platforms.forEach(p => {
+      const match = findLatestPlatformAsset(published, p.key);
+      if (!match) return;
+
+      const { release, asset } = match;
+      const sizeStr = formatBytes(asset.size);
+      const sha256 = getAssetSha256(asset);
+
+      // Actualiza DOWNLOAD_URLS
+      DOWNLOAD_URLS[p.id] = IS_WEB_HOSTED ? `/download/${p.id === 'mobile' ? 'android' : p.id}` : asset.browser_download_url;
+
+      // Actualiza texto de versión en la tarjeta
+      const verEl = document.getElementById(`${p.id}-version-text`);
+      if (verEl) {
+        verEl.innerHTML = `${escapeHtml(release.tag_name)} Oficial &bull; ${escapeHtml(sizeStr)}`;
+      }
+
+      // Actualiza botón de descarga
+      const btnEl = document.getElementById(`${p.id}-download-btn`);
+      if (btnEl) {
+        btnEl.href = DOWNLOAD_URLS[p.id];
+        btnEl.setAttribute('download', asset.name);
+        btnEl.setAttribute('data-filename', asset.name);
+      }
+
+      // Actualiza texto del botón
+      const btnLabelEl = document.getElementById(`${p.id}-btn-label`);
+      if (btnLabelEl) {
+        btnLabelEl.textContent = `${p.btnName} (${sizeStr})`;
+      }
+
+      // Actualiza hash SHA-256 y botón copiar
+      if (sha256) {
+        const copyBtn = document.getElementById(`${p.id}-copy-btn`);
+        if (copyBtn) {
+          copyBtn.dataset.checksum = sha256;
+        }
+
+        const previewEl = document.getElementById(`${p.id}-checksum-preview`);
+        if (previewEl) {
+          previewEl.textContent = `${sha256.slice(0, 12)}...${sha256.slice(-10)}`;
+        }
+      }
+    });
+
+    // 4. Refresca la tarjeta de detección automática en Hero
+    setupAutoDetection();
+
+    // 5. Actualiza texto del código QR móvil
+    const qrDisplay = document.getElementById('qr-url-display');
+    if (qrDisplay && DOWNLOAD_URLS.mobile) {
+      qrDisplay.textContent = DOWNLOAD_URLS.mobile;
+    }
+  }
+
+  async function loadReleaseData() {
+    const releases = await fetchReleasesWithCache();
+    if (releases && releases.length) {
+      updateDynamicPlatformCards(releases);
+      renderVersionHistory(releases);
+    }
   }
 
   /* -------------------------------------------------------------------------
@@ -510,8 +861,10 @@
     setupInstructionToggles();
     setupHashVerifier();
     setupQrModal();
+    setupVersionHistoryModal();
     setupLiveVisualizer();
     updateDownloadLinks();
     setupDownloadFeedback();
+    loadReleaseData();
   });
 })();

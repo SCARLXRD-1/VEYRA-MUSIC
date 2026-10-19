@@ -46,10 +46,13 @@
         </a>
       </nav>
 
-      <div class="header-status" aria-label="Estado de versión">
+      <button class="header-status" id="version-history-btn" aria-label="Ver historial de versiones" title="Ver historial de versiones y lanzamientos">
         <span class="status-dot" aria-hidden="true"></span>
-        <span class="status-text">v1.0.0 Oficial</span>
-      </div>
+        <span class="status-text" id="header-version-text">v1.0.1 Oficial</span>
+        <svg class="status-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -59,7 +62,7 @@
       <div class="container hero-container">
         <div class="hero-pill-badge">
           <span class="pulse-indicator" aria-hidden="true"></span>
-          <span>Versión 1.0.0 Estable &bull; Distribución Oficial</span>
+          <span id="hero-pill-version">Versión 1.0.1 Estable &bull; Distribución Oficial</span>
         </div>
 
         <h1 class="hero-title">
@@ -188,7 +191,7 @@
 
             <div class="card-heading">
               <h3 class="card-title">Veyra Android</h3>
-              <span class="card-version">v1.0.0 Oficial &bull; 129 MB</span>
+              <span class="card-version" id="mobile-version-text">v1.0.1 Oficial &bull; 162 MB</span>
             </div>
 
             <p class="card-text">
@@ -210,25 +213,25 @@
               </li>
               <li>
                 <svg class="bullet-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                <span><strong>Arquitecturas:</strong> ARM64, ARMv7, x86_64 (Android 12-15)</span>
+                <span><strong>Arquitecturas:</strong> ARM64, ARMv7, x86_64 (Android 7.0 - 15)</span>
               </li>
             </ul>
 
             <div class="card-footer">
-              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk" class="btn btn--primary btn--block download-trigger" data-filename="app-release.apk" download="app-release.apk" target="download_target_frame">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk" class="btn btn--primary btn--block download-trigger" id="mobile-download-btn" data-filename="app-release.apk" download="app-release.apk" target="download_target_frame">
                 <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Descargar APK (129 MB)</span>
+                <span id="mobile-btn-label">Descargar APK (162 MB)</span>
               </a>
 
               <div class="checksum-box">
                 <div class="checksum-label">
                   <span>SHA-256</span>
-                  <button class="copy-btn" data-checksum="b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea" aria-label="Copiar hash SHA-256">
+                  <button class="copy-btn" id="mobile-copy-btn" data-checksum="d353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416" aria-label="Copiar hash SHA-256">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     <span>Copiar</span>
                   </button>
                 </div>
-                <code class="checksum-code">41538c2b6b166c89...dec5a176a1a3</code>
+                <code class="checksum-code" id="mobile-checksum-preview">d353d4e02747...303cc416</code>
               </div>
 
               <button class="btn btn--outline btn--block show-qr-btn" data-target="qr-modal-mobile">
@@ -249,7 +252,7 @@
 
             <div class="card-heading">
               <h3 class="card-title">Veyra Smart TV</h3>
-              <span class="card-version">v1.0.0 Oficial &bull; 129 MB</span>
+              <span class="card-version" id="tv-version-text">v1.0.1 Oficial &bull; 162 MB</span>
             </div>
 
             <p class="card-text">
@@ -271,25 +274,25 @@
               </li>
               <li>
                 <svg class="bullet-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                <span><strong>Compatibilidad:</strong> Android TV 9.0+ con Leanback nativo</span>
+                <span><strong>Compatibilidad:</strong> Android TV 7.0+ con Leanback nativo</span>
               </li>
             </ul>
 
             <div class="card-footer">
-              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk" class="btn btn--primary btn--block download-trigger" data-filename="app-release.apk" download="app-release.apk" target="download_target_frame">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk" class="btn btn--primary btn--block download-trigger" id="tv-download-btn" data-filename="app-release.apk" download="app-release.apk" target="download_target_frame">
                 <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Descargar APK TV (129 MB)</span>
+                <span id="tv-btn-label">Descargar APK TV (162 MB)</span>
               </a>
 
               <div class="checksum-box">
                 <div class="checksum-label">
                   <span>SHA-256</span>
-                  <button class="copy-btn" data-checksum="b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea" aria-label="Copiar hash SHA-256">
+                  <button class="copy-btn" id="tv-copy-btn" data-checksum="d353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416" aria-label="Copiar hash SHA-256">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     <span>Copiar</span>
                   </button>
                 </div>
-                <code class="checksum-code">41538c2b6b166c89...dec5a176a1a3</code>
+                <code class="checksum-code" id="tv-checksum-preview">d353d4e02747...303cc416</code>
               </div>
 
               <button class="btn btn--outline btn--block toggle-instructions-btn" data-target="tv-instructions">
@@ -314,7 +317,7 @@
 
             <div class="card-heading">
               <h3 class="card-title">Veyra Linux</h3>
-              <span class="card-version">v1.0.0 Oficial &bull; 394 MB</span>
+              <span class="card-version" id="linux-version-text">v1.0.0 Oficial &bull; 394 MB</span>
             </div>
 
             <p class="card-text">
@@ -341,20 +344,20 @@
             </ul>
 
             <div class="card-footer">
-              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz" class="btn btn--primary btn--block download-trigger" data-filename="veyra-v1.0.0-linux-x64.tar.gz" download="veyra-v1.0.0-linux-x64.tar.gz" target="download_target_frame">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-linux-x64.tar.gz" class="btn btn--primary btn--block download-trigger" id="linux-download-btn" data-filename="veyra-v1.0.0-linux-x64.tar.gz" download="veyra-v1.0.0-linux-x64.tar.gz" target="download_target_frame">
                 <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Descargar Tar.gz (394 MB)</span>
+                <span id="linux-btn-label">Descargar Tar.gz (394 MB)</span>
               </a>
 
               <div class="checksum-box">
                 <div class="checksum-label">
                   <span>SHA-256</span>
-                  <button class="copy-btn" data-checksum="380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac" aria-label="Copiar hash SHA-256">
+                  <button class="copy-btn" id="linux-copy-btn" data-checksum="380e01b4bcb502bf499145b30d78d0dbc75509245f630aade38aa21ded0d3aac" aria-label="Copiar hash SHA-256">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     <span>Copiar</span>
                   </button>
                 </div>
-                <code class="checksum-code">380e01b4bcb502bf...aade38aa21ded0d3aac</code>
+                <code class="checksum-code" id="linux-checksum-preview">380e01b4bcb5...21ded0d3aac</code>
               </div>
 
               <button class="btn btn--outline btn--block toggle-instructions-btn" data-target="linux-instructions">
@@ -379,7 +382,7 @@
 
             <div class="card-heading">
               <h3 class="card-title">Veyra Windows</h3>
-              <span class="card-version">v1.0.0 Oficial &bull; 343 MB</span>
+              <span class="card-version" id="windows-version-text">v1.0.0 Oficial &bull; 343 MB</span>
             </div>
 
             <p class="card-text">
@@ -406,20 +409,20 @@
             </ul>
 
             <div class="card-footer">
-              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip" class="btn btn--primary btn--block download-trigger" data-filename="veyra-v1.0.0-windows-x64.zip" download="veyra-v1.0.0-windows-x64.zip" target="download_target_frame">
+              <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/veyra-v1.0.0-windows-x64.zip" class="btn btn--primary btn--block download-trigger" id="windows-download-btn" data-filename="veyra-v1.0.0-windows-x64.zip" download="veyra-v1.0.0-windows-x64.zip" target="download_target_frame">
                 <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Descargar Zip (343 MB)</span>
+                <span id="windows-btn-label">Descargar Zip (343 MB)</span>
               </a>
 
               <div class="checksum-box">
                 <div class="checksum-label">
                   <span>SHA-256</span>
-                  <button class="copy-btn" data-checksum="b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29" aria-label="Copiar hash SHA-256">
+                  <button class="copy-btn" id="windows-copy-btn" data-checksum="b5116718574bd13e3eff4415658251b2d0ff60d5a91655e5c1bbd253f6c35b29" aria-label="Copiar hash SHA-256">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     <span>Copiar</span>
                   </button>
                 </div>
-                <code class="checksum-code">b5116718574bd13e...e5c1bbd253f6c35b29</code>
+                <code class="checksum-code" id="windows-checksum-preview">b5116718574b...53f6c35b29</code>
               </div>
 
               <button class="btn btn--outline btn--block toggle-instructions-btn" data-target="windows-instructions">
@@ -537,7 +540,7 @@
           <div class="verify-result is-hidden" id="verify-result" role="status"></div>
 
           <div class="checksum-table-wrapper">
-            <h3 class="table-title">Firmas Criptográficas Oficiales (v1.0.0)</h3>
+            <h3 class="table-title" id="checksum-table-title">Firmas Criptográficas Oficiales</h3>
             <table class="checksum-table">
               <thead>
                 <tr>
@@ -547,18 +550,18 @@
                   <th scope="col">Firma SHA-256 Oficial</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="checksum-table-body">
                 <tr>
                   <td>Android Móvil</td>
-                  <td><code>app-release.apk</code></td>
-                  <td>129 MB</td>
-                  <td><code class="hash-text">b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea</code></td>
+                  <td><code>app-release.apk (v1.0.1)</code></td>
+                  <td>162 MB</td>
+                  <td><code class="hash-text">d353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416</code></td>
                 </tr>
                 <tr>
                   <td>Smart TV</td>
-                  <td><code>app-release.apk</code></td>
-                  <td>129 MB</td>
-                  <td><code class="hash-text">b1e248b9cb36512bd0cadf5ad3325e3d76b2f4a17f32e391e00ba8bc9af4e3ea</code></td>
+                  <td><code>app-release.apk (v1.0.1)</code></td>
+                  <td>162 MB</td>
+                  <td><code class="hash-text">d353d4e027470c4a3f5b616b73fe234e1ee74fd3a01a24a6e30b5397303cc416</code></td>
                 </tr>
                 <tr>
                   <td>Linux Desktop</td>
@@ -580,6 +583,45 @@
     </section>
   </main>
 
+  <!-- Modal de Historial de Versiones -->
+  <div class="modal-backdrop is-hidden" id="version-history-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+    <div class="modal-card modal-card--history">
+      <button class="modal-close-btn" id="history-modal-close" aria-label="Cerrar modal">&times;</button>
+      
+      <div class="history-modal-header">
+        <div class="history-title-row">
+          <div class="history-icon-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-title" id="history-modal-title">Historial de Versiones</h3>
+            <p class="modal-subtitle">Registro cronológico de lanzamientos oficiales &bull; AKASHI DEV</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-list" id="history-list-container">
+        <!-- Renderizado dinámico desde app.js -->
+        <div class="history-loading">
+          <span class="status-dot"></span>
+          <span>Cargando registros oficiales...</span>
+        </div>
+      </div>
+
+      <div class="history-modal-footer">
+        <a href="https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases" target="_blank" rel="noopener noreferrer" class="btn btn--outline btn--block">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>Ver todas las releases en GitHub</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal para Código QR Móvil -->
   <div class="modal-backdrop is-hidden" id="qr-modal-mobile" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
     <div class="modal-card">
@@ -591,7 +633,7 @@
         <canvas id="qr-code-canvas" width="220" height="220" aria-label="Código QR con enlace de descarga"></canvas>
       </div>
 
-      <p class="qr-url-text"><code>https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk</code></p>
+      <p class="qr-url-text"><code id="qr-url-display">https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk</code></p>
     </div>
   </div>
 

@@ -3,13 +3,13 @@
 
 [[redirects]]
   from = "/download/android"
-  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk"
   status = 302
   force = true
 
 [[redirects]]
   from = "/download/tv"
-  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.0/app-release.apk"
+  to = "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.1/app-release.apk"
   status = 302
   force = true
 
