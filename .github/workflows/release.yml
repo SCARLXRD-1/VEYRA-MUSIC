@@ -756,14 +756,13 @@ jobs:
       && !contains(needs.*.result, 'cancelled')
       && inputs.build_only != true
       && (needs.prepare.outputs.mobile_only != 'true' || needs.prepare.outputs.is_beta != 'true')
-      && secrets['R2_BUCKET'] != ''
     runs-on: ubuntu-24.04
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets['R2_ACCESS_KEY_ID'] }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets['R2_SECRET_ACCESS_KEY'] }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: auto
-      R2_BUCKET: ${{ secrets['R2_BUCKET'] }}
-      R2_ENDPOINT: ${{ secrets['R2_ACCOUNT_ID'] && format('https://{0}.r2.cloudflarestorage.com', secrets['R2_ACCOUNT_ID']) || '' }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v8
@@ -866,7 +865,7 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ secrets['GITHUB_TOKEN'] || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Check out release tag
         uses: actions/checkout@v6
