@@ -124,31 +124,6 @@ jobs:
           test -n "$android_version_code"
 
           build_android="true"
-          if published_android="$(
-            curl --fail --silent --show-error --max-time 15 \
-              "${ORCHARD_UPDATE_URL}latest-android.json" |
-              node -e '
-                let input = "";
-                process.stdin.setEncoding("utf8");
-                process.stdin.on("data", (chunk) => { input += chunk; });
-                process.stdin.on("end", () => {
-                  try {
-                    const metadata = JSON.parse(input);
-                    const code = Number(metadata.versionCode);
-                    if (!metadata.version || !Number.isInteger(code) || code <= 0) process.exit(1);
-                    process.stdout.write(`${metadata.version}\t${code}`);
-                  } catch { process.exit(1); }
-                });
-              '
-          )"; then
-            IFS=$'\t' read -r published_android_version published_android_version_code <<< "$published_android"
-            if [[ "$android_version" == "$published_android_version" && "$android_version_code" == "$published_android_version_code" ]]; then
-              build_android="false"
-              echo "Android $android_version ($android_version_code) is already published."
-            fi
-          else
-            echo "Could not read published Android metadata; building the APK."
-          fi
           echo "build_android=$build_android" >> "$GITHUB_OUTPUT"
 
           is_beta="false"
