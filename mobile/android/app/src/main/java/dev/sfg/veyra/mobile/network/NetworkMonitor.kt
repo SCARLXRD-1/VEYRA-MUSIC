@@ -47,7 +47,10 @@ class NetworkMonitor(context: Context) {
         val cm = connectivityManager ?: return false
         val active = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(active) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        return hasValidatedInternet(
+            hasInternetCapability = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+            isValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+        )
     }
 
     init {
@@ -60,7 +63,9 @@ class NetworkMonitor(context: Context) {
                 request,
                 object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
-                        _isOnline.value = true
+                        // A Wi-Fi connection can advertise Internet without actually reaching it.
+                        // Wait for Android's validation result before starting network-only work.
+                        _isOnline.value = checkIsOnline()
                     }
 
                     override fun onLost(network: Network) {
@@ -71,9 +76,10 @@ class NetworkMonitor(context: Context) {
                         network: Network,
                         networkCapabilities: NetworkCapabilities,
                     ) {
-                        val hasInternet =
-                            networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        _isOnline.value = hasInternet
+                        _isOnline.value = hasValidatedInternet(
+                            hasInternetCapability = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+                            isValidated = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+                        )
                     }
                 },
             )
@@ -82,3 +88,6 @@ class NetworkMonitor(context: Context) {
         }
     }
 }
+
+internal fun hasValidatedInternet(hasInternetCapability: Boolean, isValidated: Boolean): Boolean =
+    hasInternetCapability && isValidated

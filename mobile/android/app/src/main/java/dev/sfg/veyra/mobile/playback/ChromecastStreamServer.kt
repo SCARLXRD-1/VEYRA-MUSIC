@@ -40,6 +40,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import okhttp3.OkHttpClient
@@ -60,6 +61,14 @@ class ChromecastStreamServer(
     private val resolver: YouTubeStreamResolver,
 ) : AutoCloseable {
     private val appContext = context.applicationContext
+    // A media response can stay open for an entire song. The app's shared API client has
+    // a short read timeout for ordinary requests, which would terminate a quiet stream.
+    private val streamClient =
+        client.newBuilder()
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .build()
     private val token = UUID.randomUUID().toString().replace("-", "")
     private val running = AtomicBoolean(true)
     private val server = ServerSocket(0)
@@ -160,7 +169,7 @@ class ChromecastStreamServer(
                     if (!range.isNullOrBlank()) header("Range", range)
                 }
                 .build()
-        client.newCall(request).execute().use { response ->
+        streamClient.newCall(request).execute().use { response ->
             val body = response.body
             val code = response.code
             val reason = response.message.ifBlank { reasonFor(code) }
@@ -222,6 +231,22 @@ class ChromecastStreamServer(
 
     private fun localIpv4Address(): Inet4Address? {
         val connectivity = appContext.getSystemService(ConnectivityManager::class.java)
+        // Cast receivers are on the local Wi-Fi. The phone's default route can be cellular
+        // while Wi-Fi remains connected, so prefer the address on a Wi-Fi network explicitly.
+        connectivity.allNetworks
+            .asSequence()
+            .filter { network ->
+                connectivity.getNetworkCapabilities(network)
+                    ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+            .flatMap { network ->
+                connectivity.getLinkProperties(network)?.linkAddresses.orEmpty().asSequence()
+            }
+            .map { it.address }
+            .filterIsInstance<Inet4Address>()
+            .firstOrNull { !it.isLoopbackAddress && !it.isLinkLocalAddress }
+            ?.let { return it }
+
         val active = connectivity.activeNetwork
         if (
             active != null &&

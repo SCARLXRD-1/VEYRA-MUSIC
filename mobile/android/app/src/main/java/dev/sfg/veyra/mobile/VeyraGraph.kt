@@ -68,6 +68,7 @@ class VeyraGraph(context: Context) {
         scope = applicationScope,
         profileLoader = { innerTube.accountInfo() },
     )
+    val sessionQrPairing = dev.sfg.veyra.mobile.auth.SessionQrPairingRepository(applicationScope, auth)
     private val innerTube: InnerTubeClient = InnerTubeClient(http, auth)
     val settings = SettingsRepository(context, applicationScope)
     val bestMixFeatures = BestMixFeatureStore(context)

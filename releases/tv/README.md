@@ -6,10 +6,10 @@
 
 ---
 
-## 📦 Paquete actual (v1.0.2)
+## 📦 Paquete actual (v1.0.3)
 
 - **Formato:** APK Híbrido Universal Móvil + Android TV (`veyramusic.apk`)
-- **Descarga oficial:** `https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk`
+- **Descarga oficial:** `https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.3/veyramusic.apk`
 - **SHA-256:** `69129b4c295508b7869444365fe70f5f9c573e3a55db76a05725644524d91da5`
 - **Min SDK:** Android 7.0 (API 24)
 - **Target SDK:** Android 16 (API 36)

@@ -80,6 +80,7 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.TabletMac
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +91,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -158,6 +160,7 @@ fun DevicesScreen(
     onBack: () -> Unit,
     onSelect: (PlaybackTarget) -> Unit,
     onPair: (String) -> Unit,
+    onTransferSession: (String) -> Unit = {},
     onDisconnect: () -> Unit,
     onPresetSelect: (String) -> Unit = {},
     onToggleAutoEq: (Boolean) -> Unit = {},
@@ -179,6 +182,7 @@ fun DevicesScreen(
             onBack = onBack,
             onSelect = onSelect,
             onPair = onPair,
+            onTransferSession = onTransferSession,
             onDisconnect = onDisconnect,
             onPresetSelect = onPresetSelect,
             onToggleAutoEq = onToggleAutoEq,
@@ -206,6 +210,7 @@ private fun FrostedDevicesScreenContent(
     onBack: () -> Unit,
     onSelect: (PlaybackTarget) -> Unit,
     onPair: (String) -> Unit,
+    onTransferSession: (String) -> Unit,
     onDisconnect: () -> Unit,
     onPresetSelect: (String) -> Unit,
     onToggleAutoEq: (Boolean) -> Unit,
@@ -219,13 +224,18 @@ private fun FrostedDevicesScreenContent(
     val context = LocalContext.current
     var pairingInput by remember { mutableStateOf("") }
     var deviceToRename by remember { mutableStateOf<PlaybackDevice?>(null) }
+    var pendingSessionQr by remember { mutableStateOf<String?>(null) }
     val scanner =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result
             ->
             if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.getStringExtra("SCAN_RESULT")?.takeIf(String::isNotBlank)?.let {
-                    pairingInput = it
-                    onPair(it)
+                    if (it.startsWith("veyra-session://", ignoreCase = true)) {
+                        pendingSessionQr = it
+                    } else {
+                        pairingInput = it
+                        onPair(it)
+                    }
                 }
             }
         }
@@ -347,6 +357,29 @@ private fun FrostedDevicesScreenContent(
             onConfirm = { newName ->
                 onRenameDevice(dev, newName)
                 deviceToRename = null
+            },
+        )
+    }
+    pendingSessionQr?.let { qr ->
+        AlertDialog(
+            onDismissRequest = { pendingSessionQr = null },
+            title = { Text("Vincular sesión con la TV") },
+            text = {
+                Text(
+                    "Se copiará tu sesión de YouTube Music a la TV. Tu sesión seguirá abierta en este móvil. " +
+                        "Continúa solo si el QR está visible en tu televisor.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingSessionQr = null
+                        onTransferSession(qr)
+                    },
+                ) { Text("Vincular") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSessionQr = null }) { Text("Cancelar") }
             },
         )
     }
@@ -1083,7 +1116,11 @@ private fun FrostedPairingPanel(
 
             Spacer(Modifier.height(14.dp))
 
-            IntegrationAction(stringResource(R.string.devices_scan_qr), onClick = onScan)
+            IntegrationAction(
+                label = stringResource(R.string.devices_scan_qr),
+                icon = Icons.Rounded.QrCodeScanner,
+                onClick = onScan,
+            )
             Spacer(Modifier.height(8.dp))
 
             // Manual Pairing Link Input Field with Paste & Clear actions

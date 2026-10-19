@@ -116,6 +116,21 @@ class NativeYouTubeAuthRepository(
         }
     }
 
+    /** Commits an already authenticated session received through an explicit local device link. */
+    fun importSession(session: YouTubeSession) {
+        val importedGeneration = synchronized(sessionGuard) {
+            generation.incrementAndGet().also { current ->
+                require(YouTubeSessionAuth.loginCookieValue(session.cookie) != null) {
+                    appContext.getString(R.string.auth_session_cookie_incomplete)
+                }
+                store.save(session)
+                activeSession = session
+                mutableState.value = AuthState.SignedIn(session.displayName, session.avatarUrl)
+            }
+        }
+        scope.launch { refreshProfile(importedGeneration) }
+    }
+
     fun cancelSignIn() = synchronized(sessionGuard) {
         generation.incrementAndGet()
         mutableState.value = activeSession?.let { AuthState.SignedIn(it.displayName, it.avatarUrl) }

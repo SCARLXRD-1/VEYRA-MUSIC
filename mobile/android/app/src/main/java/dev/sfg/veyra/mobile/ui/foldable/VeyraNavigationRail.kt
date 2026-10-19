@@ -70,6 +70,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -87,6 +89,7 @@ import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 
 import dev.sfg.veyra.mobile.ui.tv.tvNavRailFocusable
+import dev.sfg.veyra.mobile.ui.tv.LocalIsTv
 
 data class RailDestination(val route: String, val labelRes: Int, val icon: ImageVector)
 
@@ -131,6 +134,13 @@ fun VeyraNavigationRail(
         }
     }
     val activeIndex = selectedIndex ?: lastKnownIndex
+    val isTv = LocalIsTv.current
+    val destinationFocusRequesters = remember { List(foldableDestinations.size) { FocusRequester() } }
+    LaunchedEffect(selectedIndex, isTv) {
+        if (isTv && selectedIndex != null) {
+            runCatching { destinationFocusRequesters[selectedIndex].requestFocus() }
+        }
+    }
 
     val railScrim = remember {
         Brush.horizontalGradient(
@@ -219,6 +229,7 @@ fun VeyraNavigationRail(
                         border = if (isSelected) BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)) else null,
                         modifier = Modifier
                             .size(width = 62.dp, height = 54.dp)
+                            .then(if (isTv) Modifier.focusRequester(destinationFocusRequesters[index]) else Modifier)
                             .tvNavRailFocusable(isSelected = isSelected, shape = RoundedCornerShape(16.dp)) {
                                 onSelect(destination.route)
                             },

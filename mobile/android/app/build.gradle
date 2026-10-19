@@ -65,8 +65,8 @@ android {
         applicationId = 'dev.sfg.veyra.mobile'
         minSdk = veyraMinSdk
         targetSdk = 36
-        versionCode = 3
-        versionName = '1.0.2'
+        versionCode = 4
+        versionName = '1.0.3'
         buildConfigField 'String', 'CODENAME', '"AKASHI DEV"'
         // Only the build that is actually published may offer updates. Every other
         // build has its own applicationId, so the published APK is neither an

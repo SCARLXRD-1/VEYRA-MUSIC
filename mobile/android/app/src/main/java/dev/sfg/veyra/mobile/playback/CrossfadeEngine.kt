@@ -158,8 +158,16 @@ class CrossfadeEngine(
         stagedLiveTransition = null
         handler.removeCallbacks(watcher)
         handler.removeCallbacks(ramp)
+        filters()?.let { (outgoingFilter, incomingFilter) ->
+            outgoingFilter.clearAutomation()
+            incomingFilter.clearAutomation()
+        }
         active.volume = 1f
         active.pauseAtEndOfMediaItems = false
+        active.setPlaybackParameters(PlaybackParameters.DEFAULT)
+        standby.volume = 1f
+        standby.pauseAtEndOfMediaItems = false
+        standby.setPlaybackParameters(PlaybackParameters.DEFAULT)
         handler.post(watcher)
     }
 
@@ -324,6 +332,10 @@ class CrossfadeEngine(
         incoming.shuffleModeEnabled = outgoing.shuffleModeEnabled
         incoming.setPlaylistMetadata(outgoing.playlistMetadata)
         incoming.setMediaItems(queue, nextIndex, (selected.incomingCueTime * 1000).toLong())
+        // Keep the auxiliary deck on the exact same playback permutation. Its default shuffle
+        // order is independently randomized, which can otherwise hand off to a different song
+        // than the one selected by the active queue.
+        incoming.setShuffleOrder(outgoing.shuffleOrder)
         incoming.setPlaybackParameters(
             PlaybackParameters(selected.incomingTempoRatio.coerceAtLeast(MIN_PLAYBACK_RATE).toFloat()),
         )
@@ -461,6 +473,7 @@ class CrossfadeEngine(
             // Smart plans cue past the incoming track's lead-in silence, or back from its drop so
             // the arrangement lands where the outgoing track ends. Standard plans cue at zero.
             incoming.setMediaItems(queue, nextIndex, (plan.incomingCueTime * 1000).toLong())
+            incoming.setShuffleOrder(outgoing.shuffleOrder)
             incoming.prepare()
         } else {
             val desiredPositionMs = (plan.incomingCueTime * 1000).toLong()

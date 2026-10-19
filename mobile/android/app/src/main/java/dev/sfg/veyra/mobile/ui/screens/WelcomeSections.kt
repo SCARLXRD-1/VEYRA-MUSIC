@@ -30,6 +30,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -67,6 +68,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +78,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
+import android.graphics.Bitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import dev.sfg.veyra.mobile.auth.AuthState
@@ -85,6 +91,8 @@ import dev.sfg.veyra.mobile.model.AudioQuality
 import dev.sfg.veyra.mobile.model.OrchardSettings
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.LocalIsTv
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -145,7 +153,7 @@ internal fun WelcomeHeroHeader() {
 }
 
 @Composable
-internal fun WelcomeLanguageSection() {
+internal fun WelcomeLanguageSection(initialFocusRequester: FocusRequester? = null) {
     val context = LocalContext.current
     var language by remember { mutableStateOf(AppLocale.current(context)) }
 
@@ -167,6 +175,7 @@ internal fun WelcomeLanguageSection() {
                 icon = Icons.Rounded.Language,
                 selected = language == AppLanguage.SYSTEM,
                 modifier = Modifier.weight(1f),
+                focusRequester = initialFocusRequester,
                 onClick = {
                     language = AppLanguage.SYSTEM
                     AppLocale.apply(context, AppLanguage.SYSTEM)
@@ -263,7 +272,14 @@ internal fun WelcomeAuthSection(
                 OutlinedButton(
                     onClick = onSignOut,
                     shape = CircleShape,
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .tvFocusable(
+                            shape = CircleShape,
+                            scale = 1.035f,
+                            onClick = onSignOut,
+                        ),
                 ) {
                     Text(stringResource(R.string.welcome_auth_sign_out), color = CanopyColors.Danger)
                 }
@@ -275,13 +291,73 @@ internal fun WelcomeAuthSection(
                         containerColor = LocalAccent.current,
                         contentColor = Color.Black,
                     ),
-                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                        .tvFocusable(
+                            shape = CircleShape,
+                            scale = 1.035f,
+                            onClick = onSignIn,
+                        ),
                 ) {
                     Text(stringResource(R.string.welcome_auth_sign_in), fontWeight = FontWeight.Bold)
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+internal fun WelcomeSessionQrSection(
+    qrPayload: String,
+    status: String,
+    onStart: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    WelcomeSectionCard(
+        title = "Conectar con el móvil",
+        subtitle = "Escanea el QR desde Veyra Music en tu móvil. Ambos dispositivos deben estar en la misma red.",
+    ) {
+        if (qrPayload.isBlank()) {
+            Button(
+                onClick = onStart,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                    .tvFocusable(shape = CircleShape, scale = 1.03f, onClick = onStart),
+                shape = CircleShape,
+            ) { Text("Mostrar QR de sesión") }
+        } else {
+            val bitmap = remember(qrPayload) {
+                val matrix = QRCodeWriter().encode(qrPayload, BarcodeFormat.QR_CODE, 420, 420)
+                Bitmap.createBitmap(420, 420, Bitmap.Config.ARGB_8888).also { image ->
+                    for (x in 0 until 420) for (y in 0 until 420) {
+                        image.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                    }
+                }
+            }
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Código QR para vincular la sesión del móvil",
+                    modifier = Modifier.padding(12.dp).size(210.dp).clip(RoundedCornerShape(12.dp)),
+                )
+            }
+            Text("El código caduca en 3 minutos y solo puede usarse una vez.", modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), color = CanopyColors.Muted, textAlign = TextAlign.Center)
+            Text(
+                "La sesión se copia a la TV y permanece abierta en el móvil.",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                color = CanopyColors.Muted,
+                textAlign = TextAlign.Center,
+            )
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.fillMaxWidth().padding(16.dp).tvFocusable(shape = CircleShape, scale = 1.03f, onClick = onCancel),
+                shape = CircleShape,
+            ) { Text("Cancelar") }
+        }
+        if (status.isNotBlank()) {
+            Text(status, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), color = CanopyColors.Muted, textAlign = TextAlign.Center)
+        }
     }
 }
 
@@ -360,18 +436,55 @@ internal fun WelcomeCrossfadeSection(
                     )
                 }
 
-                Slider(
-                    value = settings.crossfadeSeconds.toFloat(),
-                    onValueChange = { onUpdateSettings(settings.copy(crossfadeSeconds = it.roundToInt())) },
-                    valueRange = OrchardSettings.MIN_CROSSFADE_SECONDS.toFloat()..OrchardSettings.MAX_CROSSFADE_SECONDS.toFloat(),
-                    steps = OrchardSettings.MAX_CROSSFADE_SECONDS - OrchardSettings.MIN_CROSSFADE_SECONDS - 1,
-                    colors = SliderDefaults.colors(
-                        thumbColor = LocalAccent.current,
-                        activeTrackColor = LocalAccent.current,
-                        inactiveTrackColor = CanopyColors.Canvas,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (LocalIsTv.current) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        maxItemsInEachRow = 6,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        (OrchardSettings.MIN_CROSSFADE_SECONDS..OrchardSettings.MAX_CROSSFADE_SECONDS)
+                            .forEach { seconds ->
+                                val selected = settings.crossfadeSeconds == seconds
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .background(
+                                            if (selected) LocalAccent.current.copy(alpha = 0.22f) else CanopyColors.Canvas,
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                        .tvFocusable(
+                                            shape = RoundedCornerShape(12.dp),
+                                            scale = 1.04f,
+                                            onClick = {
+                                                onUpdateSettings(settings.copy(crossfadeSeconds = seconds))
+                                            },
+                                        ),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "${seconds}s",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = if (selected) LocalAccent.current else CanopyColors.Text,
+                                    )
+                                }
+                            }
+                    }
+                } else {
+                    Slider(
+                        value = settings.crossfadeSeconds.toFloat(),
+                        onValueChange = { onUpdateSettings(settings.copy(crossfadeSeconds = it.roundToInt())) },
+                        valueRange = OrchardSettings.MIN_CROSSFADE_SECONDS.toFloat()..OrchardSettings.MAX_CROSSFADE_SECONDS.toFloat(),
+                        steps = OrchardSettings.MAX_CROSSFADE_SECONDS - OrchardSettings.MIN_CROSSFADE_SECONDS - 1,
+                        colors = SliderDefaults.colors(
+                            thumbColor = LocalAccent.current,
+                            activeTrackColor = LocalAccent.current,
+                            inactiveTrackColor = CanopyColors.Canvas,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 Spacer(Modifier.height(8.dp))
 
@@ -446,7 +559,45 @@ internal fun WelcomeQualityAndStorageSection(
 
             Spacer(Modifier.height(12.dp))
 
-            Row(
+            if (LocalIsTv.current) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    maxItemsInEachRow = 2,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    AudioQuality.entries.forEach { quality ->
+                        val selected = quality == settings.audioQuality
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .background(
+                                    if (selected) LocalAccent.current.copy(alpha = 0.22f) else CanopyColors.Canvas,
+                                    RoundedCornerShape(14.dp),
+                                )
+                                .tvFocusable(
+                                    shape = RoundedCornerShape(14.dp),
+                                    scale = 1.04f,
+                                    onClick = { onUpdateSettings(settings.copy(audioQuality = quality)) },
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = when (quality) {
+                                    AudioQuality.DATA_SAVER -> stringResource(R.string.welcome_quality_saver)
+                                    AudioQuality.NORMAL -> stringResource(R.string.welcome_quality_normal)
+                                    AudioQuality.HIGH -> stringResource(R.string.welcome_quality_high)
+                                    AudioQuality.MAX -> stringResource(R.string.welcome_quality_max)
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selected) LocalAccent.current else CanopyColors.Text,
+                            )
+                        }
+                    }
+                }
+            } else Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(CanopyColors.Canvas, CircleShape)
@@ -463,7 +614,11 @@ internal fun WelcomeQualityAndStorageSection(
                                 if (isSelected) LocalAccent.current else Color.Transparent,
                                 CircleShape,
                             )
-                            .clickable { onUpdateSettings(settings.copy(audioQuality = quality)) },
+                            .tvFocusable(
+                                shape = CircleShape,
+                                scale = 1.04f,
+                                onClick = { onUpdateSettings(settings.copy(audioQuality = quality)) },
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -510,18 +665,53 @@ internal fun WelcomeQualityAndStorageSection(
                 )
             }
 
-            Slider(
-                value = index.toFloat(),
-                onValueChange = { onUpdateSettings(settings.copy(cacheSizeMb = steps[it.roundToInt()])) },
-                valueRange = 0f..steps.lastIndex.toFloat(),
-                steps = steps.size - 2,
-                colors = SliderDefaults.colors(
-                    thumbColor = LocalAccent.current,
-                    activeTrackColor = LocalAccent.current,
-                    inactiveTrackColor = CanopyColors.Canvas,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (LocalIsTv.current) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    maxItemsInEachRow = 3,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    steps.forEach { cacheSize ->
+                        val selected = steps[index] == cacheSize
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .background(
+                                    if (selected) LocalAccent.current.copy(alpha = 0.22f) else CanopyColors.Canvas,
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .tvFocusable(
+                                    shape = RoundedCornerShape(12.dp),
+                                    scale = 1.04f,
+                                    onClick = { onUpdateSettings(settings.copy(cacheSizeMb = cacheSize)) },
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = formatCacheSize(cacheSize),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selected) LocalAccent.current else CanopyColors.Text,
+                            )
+                        }
+                    }
+                }
+            } else {
+                Slider(
+                    value = index.toFloat(),
+                    onValueChange = { onUpdateSettings(settings.copy(cacheSizeMb = steps[it.roundToInt()])) },
+                    valueRange = 0f..steps.lastIndex.toFloat(),
+                    steps = steps.size - 2,
+                    colors = SliderDefaults.colors(
+                        thumbColor = LocalAccent.current,
+                        activeTrackColor = LocalAccent.current,
+                        inactiveTrackColor = CanopyColors.Canvas,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

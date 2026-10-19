@@ -24,7 +24,10 @@
 package dev.sfg.veyra.mobile.playback
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import com.google.android.gms.cast.framework.CastContext
 import androidx.media3.cast.RemoteCastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.common.C
@@ -43,6 +46,7 @@ class ChromecastPlayback(
     private val onCastEnded: (Player) -> Unit,
     private val onError: (String) -> Unit,
 ) : AutoCloseable {
+    private val appContext = context.applicationContext
     val player: RemoteCastPlayer =
         RemoteCastPlayer.Builder(context).setMediaItemConverter(converter).build()
 
@@ -51,6 +55,12 @@ class ChromecastPlayback(
 
     private var lastRemoteState = TransferState.EMPTY
     private var lastPhoneState = TransferState.EMPTY
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val sessionLossCheck = Runnable {
+        // SessionAvailabilityListener can report a brief gap while Cast reconnects. Keep
+        // ownership on the receiver while the Cast framework still has a session to resume.
+        if (!player.isCastSessionAvailable && !hasCastSession()) transferToPhone()
+    }
 
     private val remoteListener =
         object : Player.Listener {
@@ -61,9 +71,15 @@ class ChromecastPlayback(
 
     private val sessionListener =
         object : SessionAvailabilityListener {
-            override fun onCastSessionAvailable() = transferToReceiver()
+            override fun onCastSessionAvailable() {
+                mainHandler.removeCallbacks(sessionLossCheck)
+                transferToReceiver()
+            }
 
-            override fun onCastSessionUnavailable() = transferToPhone()
+            override fun onCastSessionUnavailable() {
+                mainHandler.removeCallbacks(sessionLossCheck)
+                mainHandler.postDelayed(sessionLossCheck, SESSION_LOSS_GRACE_MS)
+            }
         }
 
     init {
@@ -139,6 +155,11 @@ class ChromecastPlayback(
             }
     }
 
+    private fun hasCastSession(): Boolean =
+        runCatching {
+            CastContext.getSharedInstance(appContext).sessionManager.currentCastSession != null
+        }.getOrDefault(false)
+
     private fun restorePhoneQueue(remoteItems: List<MediaItem>): List<MediaItem> {
         if (remoteItems.isEmpty()) return lastPhoneState.items
         val originalItems = lastPhoneState.items
@@ -160,6 +181,7 @@ class ChromecastPlayback(
     }
 
     override fun close() {
+        mainHandler.removeCallbacks(sessionLossCheck)
         player.setSessionAvailabilityListener(null)
         player.removeListener(remoteListener)
         isActive = false
@@ -210,5 +232,6 @@ class ChromecastPlayback(
 
     private companion object {
         const val TAG = "OrchardCast"
+        const val SESSION_LOSS_GRACE_MS = 2_500L
     }
 }

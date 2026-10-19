@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -28,12 +28,12 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '26'
-  BUN_VERSION: '1.4.0'
-  GO_VERSION: '1.24.x'
-  FLATPAK_RUNTIME: '50'
-  npm_config_audit: 'false'
-  npm_config_fund: 'false'
+  NODE_VERSION: "26"
+  BUN_VERSION: "1.4.0"
+  GO_VERSION: "1.24.x"
+  FLATPAK_RUNTIME: "50"
+  npm_config_audit: "false"
+  npm_config_fund: "false"
   ORCHARD_UPDATE_URL: https://raw.githubusercontent.com/SCARLXRD-1/VEYRA-MUSIC/main/website/
 
 jobs:
@@ -182,19 +182,19 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: orchard-packages/go.sum
+          cache-dependency-path: veyra-packages/go.sum
 
-      - name: Test Orchard Packages
+      - name: Test Veyra Packages
         if: steps.release.outputs.mobile_only != 'true'
         run: |
-          bun install --cwd orchard-packages --frozen-lockfile
-          bun run --cwd orchard-packages test
+          bun install --cwd veyra-packages --frozen-lockfile
+          bun run --cwd veyra-packages test
 
       - name: Set up JDK 17
         if: steps.release.outputs.mobile_only == 'true'
         uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: "17"
           distribution: temurin
           cache: gradle
 
@@ -248,7 +248,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: orchard-packages/go.sum
+          cache-dependency-path: veyra-packages/go.sum
 
       - name: Install build tools and Flatpak runtime
         run: |
@@ -267,17 +267,17 @@ jobs:
           npm ci
           npm run build:native
           node scripts/stage-package-native.mjs linux-arm64 native-inputs
-          bun install --cwd orchard-packages --frozen-lockfile
-          bun run --cwd orchard-packages build:release linux-arm64
+          bun install --cwd veyra-packages --frozen-lockfile
+          bun run --cwd veyra-packages build:release linux-arm64
           manager_version="${{ needs.prepare.outputs.manager_version }}"
-          bundle="orchard-packages/dist/releases/orchard-packages-$manager_version-linux-arm64"
+          bundle="veyra-packages/dist/releases/orchard-packages-$manager_version-linux-arm64"
           mkdir -p release-assets
           ZSTD_CLEVEL=6 tar --zstd -cf \
             "release-assets/orchard-packages-$manager_version-linux-arm64.tar.zst" \
             -C "$bundle" .
-          bun run --cwd orchard-packages package:linux linux-arm64
+          bun run --cwd veyra-packages package:linux linux-arm64
           cp artifacts/linux/linux-arm64/*.deb artifacts/linux/linux-arm64/*.rpm release-assets/
-          bun run --cwd orchard-packages package:flatpak linux-arm64
+          bun run --cwd veyra-packages package:flatpak linux-arm64
           cp artifacts/flatpak/*.flatpak release-assets/
 
       - name: Save ARM64 native inputs
@@ -333,7 +333,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: orchard-packages/go.sum
+          cache-dependency-path: veyra-packages/go.sum
 
       - name: Build native package and manager
         shell: pwsh
@@ -345,18 +345,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/stage-package-native.mjs win32-${{ matrix.arch }} native-inputs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          bun install --cwd orchard-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          bun run --cwd orchard-packages build:release win32-${{ matrix.arch }}
+          bun run --cwd veyra-packages build:release win32-${{ matrix.arch }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $managerVersion = '${{ needs.prepare.outputs.manager_version }}'
-          $bundle = "orchard-packages/dist/releases/orchard-packages-$managerVersion-win32-${{ matrix.arch }}"
+          $bundle = "veyra-packages/dist/releases/orchard-packages-$managerVersion-win32-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force release-assets | Out-Null
           Compress-Archive -Path "$bundle/*" -DestinationPath "release-assets/orchard-packages-$managerVersion-win32-${{ matrix.arch }}.zip"
-          pwsh -NoProfile -ExecutionPolicy Bypass -File orchard-packages/scripts/build-windows-installer.ps1 -Architecture '${{ matrix.arch }}'
+          pwsh -NoProfile -ExecutionPolicy Bypass -File veyra-packages/scripts/build-windows-installer.ps1 -Architecture '${{ matrix.arch }}'
           $installers = @(Get-ChildItem "artifacts/windows/win32-${{ matrix.arch }}" -File -Filter '*.exe')
           if ($installers.Count -ne 1) { throw "Expected one Windows installer, found $($installers.Count)." }
           $installers | Copy-Item -Destination release-assets
+          Copy-Item $installers[0].FullName -Destination "release-assets/veyramusic.exe"
+          Copy-Item $installers[0].FullName -Destination "release-assets/veyramusic-setup-$managerVersion-win32-${{ matrix.arch }}.exe"
 
       - name: Save Windows native inputs
         uses: actions/upload-artifact@v7
@@ -413,7 +415,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: orchard-packages/go.sum
+          cache-dependency-path: veyra-packages/go.sum
 
       - name: Build native package and manager
         run: |
@@ -427,10 +429,10 @@ jobs:
             file "$addon" | grep -q '${{ matrix.file_arch }}'
           done
           node scripts/stage-package-native.mjs darwin-${{ matrix.arch }} native-inputs
-          bun install --cwd orchard-packages --frozen-lockfile
-          bun run --cwd orchard-packages build:release darwin-${{ matrix.arch }}
+          bun install --cwd veyra-packages --frozen-lockfile
+          bun run --cwd veyra-packages build:release darwin-${{ matrix.arch }}
           manager_version='${{ needs.prepare.outputs.manager_version }}'
-          bundle="orchard-packages/dist/releases/orchard-packages-$manager_version-darwin-${{ matrix.arch }}"
+          bundle="veyra-packages/dist/releases/orchard-packages-$manager_version-darwin-${{ matrix.arch }}"
           mkdir -p release-assets
           ditto -c -k "$bundle" \
             "release-assets/orchard-packages-$manager_version-darwin-${{ matrix.arch }}.zip"
@@ -480,7 +482,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: orchard-packages/go.sum
+          cache-dependency-path: veyra-packages/go.sum
 
       - name: Install build tools and Flatpak runtime
         run: |
@@ -499,16 +501,16 @@ jobs:
           npm ci
           npm run build:native
           node scripts/stage-package-native.mjs linux-x64 native-inputs
-          bun install --cwd orchard-packages --frozen-lockfile
-          bun run --cwd orchard-packages build:release linux-x64
-          bun run --cwd orchard-packages package:linux linux-x64
-          bun run --cwd orchard-packages package:flatpak linux-x64
+          bun install --cwd veyra-packages --frozen-lockfile
+          bun run --cwd veyra-packages build:release linux-x64
+          bun run --cwd veyra-packages package:linux linux-x64
+          bun run --cwd veyra-packages package:flatpak linux-x64
 
       - name: Stage Linux x64 artifacts
         run: |
           set -euo pipefail
           manager_version="${{ needs.prepare.outputs.manager_version }}"
-          bundle="orchard-packages/dist/releases/orchard-packages-$manager_version-linux-x64"
+          bundle="veyra-packages/dist/releases/orchard-packages-$manager_version-linux-x64"
           mkdir -p release-assets
           ZSTD_CLEVEL=6 tar --zstd -cf \
             "release-assets/orchard-packages-$manager_version-linux-x64.tar.zst" \
@@ -561,7 +563,7 @@ jobs:
           set -euo pipefail
           chown -R builder:builder "$GITHUB_WORKSPACE"
           runuser -u builder -- env HOME=/home/builder PATH="$PATH" \
-            sh -c 'cd "$1" && bun run package:orchard-packages:arch' _ "$GITHUB_WORKSPACE"
+            sh -c 'cd "$1" && bun run package:veyra-packages:arch' _ "$GITHUB_WORKSPACE"
 
       - name: Save Arch Linux package
         uses: actions/upload-artifact@v7
@@ -573,7 +575,8 @@ jobs:
 
   build-r2:
     name: Build package service artifacts
-    needs: [prepare, build-linux-arm64, build-linux-x64, build-windows, build-macos]
+    needs:
+      [prepare, build-linux-arm64, build-linux-x64, build-windows, build-macos]
     if: needs.prepare.outputs.mobile_only != 'true'
     runs-on: ubuntu-24.04
     steps:
@@ -599,7 +602,7 @@ jobs:
       - name: Install package-service dependencies
         run: |
           npm ci
-          bun install --cwd orchard-packages --frozen-lockfile
+          bun install --cwd veyra-packages --frozen-lockfile
 
       - name: Download native inputs
         uses: actions/download-artifact@v8
@@ -613,7 +616,7 @@ jobs:
           ORCHARD_NATIVE_INPUTS: ${{ github.workspace }}/native-inputs
         run: |
           set -euo pipefail
-          bun run package:orchard '${{ needs.prepare.outputs.version }}'
+          bun run package:veyra '${{ needs.prepare.outputs.version }}'
           node - <<'NODE'
           const manifest = require('./artifacts/r2/manifest.json');
           const expected = ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64', 'win32-arm64', 'win32-x64'];
@@ -622,7 +625,7 @@ jobs:
             throw new Error(`Missing R2 native packages: ${actual.join(', ')}`);
           }
           NODE
-          bun run --cwd orchard-packages verify:r2
+          bun run --cwd veyra-packages verify:r2
 
       - name: Save package service artifacts
         uses: actions/upload-artifact@v7
@@ -646,7 +649,7 @@ jobs:
       - name: Set up Node.js for the shared transition planner
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
 
       - name: Install planner build dependencies
@@ -655,7 +658,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: "17"
           distribution: temurin
           cache: gradle
 
@@ -669,10 +672,10 @@ jobs:
 
       - name: Restore Android release keystore
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets['ANDROID_KEYSTORE_BASE64'] }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets['ANDROID_KEYSTORE_PASSWORD'] }}
+          ANDROID_KEY_ALIAS: ${{ secrets['ANDROID_KEY_ALIAS'] }}
+          ANDROID_KEY_PASSWORD: ${{ secrets['ANDROID_KEY_PASSWORD'] }}
         run: |
           set -euo pipefail
           test -n "$ANDROID_KEYSTORE_BASE64"
@@ -688,9 +691,9 @@ jobs:
         working-directory: mobile/android
         env:
           ANDROID_KEYSTORE_FILE: ${{ format('{0}/veyra-release.jks', runner.temp) }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets['ANDROID_KEYSTORE_PASSWORD'] }}
+          ANDROID_KEY_ALIAS: ${{ secrets['ANDROID_KEY_ALIAS'] }}
+          ANDROID_KEY_PASSWORD: ${{ secrets['ANDROID_KEY_PASSWORD'] }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
@@ -705,18 +708,19 @@ jobs:
           set -euo pipefail
           version="$(sed -n "s/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*['\"]\([^'\"]*\)['\"].*/\1/p" app/build.gradle)"
           version_code="$(sed -n "s/^[[:space:]]*versionCode[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p" app/build.gradle)"
-          apk_name="Orchard-${version}.apk"
+          apk_canonical="veyramusic.apk"
+          apk_versioned="veyramusic-${version}.apk"
+          apk_legacy="Orchard-${version}.apk"
           apk_source="app/build/outputs/apk/release/app-release.apk"
           test -n "$version"
           test -n "$version_code"
           test -f "$apk_source"
           mkdir -p ../../release-assets
-          cp "$apk_source" "../../release-assets/$apk_name"
-          apk_url="${ORCHARD_UPDATE_URL}${apk_name}"
-          if [[ "$IS_BETA" == "true" ]]; then
-            apk_url="https://github.com/${RELEASE_REPOSITORY}/releases/download/${RELEASE_TAG}/${apk_name}"
-          fi
-          sha256="$(sha256sum "../../release-assets/$apk_name" | awk '{print $1}')"
+          cp "$apk_source" "../../release-assets/$apk_canonical"
+          cp "$apk_source" "../../release-assets/$apk_versioned"
+          cp "$apk_source" "../../release-assets/$apk_legacy"
+          apk_url="https://github.com/${RELEASE_REPOSITORY}/releases/download/${RELEASE_TAG}/${apk_canonical}"
+          sha256="$(sha256sum "../../release-assets/$apk_canonical" | awk '{print $1}')"
           published_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           node "../../scripts/generate-android-update-metadata.mjs" \
             "$version" "$version_code" "$apk_url" "$sha256" "$published_at" \
@@ -732,7 +736,17 @@ jobs:
 
   publish-r2:
     name: Publish package service to R2
-    needs: [prepare, build-linux-arm64, build-linux-x64, build-arch-x64, build-windows, build-macos, build-r2, build-android]
+    needs:
+      [
+        prepare,
+        build-linux-arm64,
+        build-linux-x64,
+        build-arch-x64,
+        build-windows,
+        build-macos,
+        build-r2,
+        build-android,
+      ]
     if: >-
       always()
       && needs.prepare.result == 'success'
@@ -742,13 +756,14 @@ jobs:
       && !contains(needs.*.result, 'cancelled')
       && inputs.build_only != true
       && (needs.prepare.outputs.mobile_only != 'true' || needs.prepare.outputs.is_beta != 'true')
+      && secrets['R2_BUCKET'] != ''
     runs-on: ubuntu-24.04
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets['R2_ACCESS_KEY_ID'] }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets['R2_SECRET_ACCESS_KEY'] }}
       AWS_DEFAULT_REGION: auto
-      R2_BUCKET: ${{ secrets.R2_BUCKET }}
-      R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      R2_BUCKET: ${{ secrets['R2_BUCKET'] }}
+      R2_ENDPOINT: ${{ secrets['R2_ACCOUNT_ID'] && format('https://{0}.r2.cloudflarestorage.com', secrets['R2_ACCOUNT_ID']) || '' }}
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v8
@@ -826,9 +841,19 @@ jobs:
             --content-type text/plain \
             --cache-control no-cache
 
-  publish-github-beta:
-    name: Publish beta to GitHub Releases
-    needs: [prepare, build-linux-arm64, build-linux-x64, build-arch-x64, build-windows, build-macos, build-r2, build-android]
+  publish-github:
+    name: Publish to GitHub Releases
+    needs:
+      [
+        prepare,
+        build-linux-arm64,
+        build-linux-x64,
+        build-arch-x64,
+        build-windows,
+        build-macos,
+        build-r2,
+        build-android,
+      ]
     if: >-
       always()
       && needs.prepare.result == 'success'
@@ -836,13 +861,12 @@ jobs:
       && (needs.prepare.outputs.mobile_only != 'true' || needs.prepare.outputs.build_android == 'true')
       && !contains(needs.*.result, 'failure')
       && !contains(needs.*.result, 'cancelled')
-      && needs.prepare.outputs.is_beta == 'true'
       && inputs.build_only != true
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets['GITHUB_TOKEN'] || secrets.GITHUB_TOKEN }}
     steps:
       - name: Check out release tag
         uses: actions/checkout@v6
@@ -856,6 +880,20 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Stage branded release assets
+        run: |
+          set -euo pipefail
+          cd release-assets
+          version='${{ needs.prepare.outputs.version }}'
+          for f in *; do
+            if [[ -f "$f" ]]; then
+              if [[ "$f" =~ ^Orchard-Setup-.*\.exe$ ]]; then
+                cp "$f" "veyramusic.exe"
+                cp "$f" "veyramusic-setup-${version}.exe"
+              fi
+            fi
+          done
+
       - name: Generate checksums
         run: |
           set -euo pipefail
@@ -865,20 +903,37 @@ jobs:
               | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           )
 
-      - name: Create GitHub prerelease
+      - name: Create GitHub Release
         env:
           MOBILE_ONLY: ${{ needs.prepare.outputs.mobile_only }}
           VERSION: ${{ needs.prepare.outputs.version }}
+          IS_BETA: ${{ needs.prepare.outputs.is_beta }}
         run: |
           set -euo pipefail
           notes=build/release-notes.md
-          title="Orchard $VERSION (beta)"
+          title="Veyra Music v$VERSION"
           if [[ "$MOBILE_ONLY" == "true" ]]; then
             notes=mobile/release-notes.md
-            title="Orchard Mobile $VERSION (beta)"
+            title="Veyra Music Mobile v$VERSION"
           fi
-          gh release create '${{ needs.prepare.outputs.tag }}' release-assets/* \
-            --repo '${{ github.repository }}' \
-            --title "$title" \
-            --notes-file "$notes" \
-            --prerelease
+          if [[ "$IS_BETA" == "true" ]]; then
+            title="$title (beta)"
+          fi
+
+          if [[ ! -f "$notes" ]]; then
+            notes="release-notes-temp.md"
+            echo "## Veyra Music v$VERSION" > "$notes"
+          fi
+
+          if [[ "$IS_BETA" == "true" ]]; then
+            gh release create '${{ needs.prepare.outputs.tag }}' release-assets/* \
+              --repo '${{ github.repository }}' \
+              --title "$title" \
+              --notes-file "$notes" \
+              --prerelease
+          else
+            gh release create '${{ needs.prepare.outputs.tag }}' release-assets/* \
+              --repo '${{ github.repository }}' \
+              --title "$title" \
+              --notes-file "$notes"
+          fi

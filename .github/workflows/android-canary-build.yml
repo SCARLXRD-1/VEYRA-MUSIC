@@ -55,20 +55,20 @@ jobs:
       # output the published APK does; a debug build would miss that class of bug.
       - name: Restore Android release keystore
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets['ANDROID_KEYSTORE_BASE64'] }}
         run: |
           set -euo pipefail
           test -n "$ANDROID_KEYSTORE_BASE64"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/orchard-release.jks"
-          chmod 600 "$RUNNER_TEMP/orchard-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/veyra-release.jks"
+          chmod 600 "$RUNNER_TEMP/veyra-release.jks"
 
       - name: Build canary APK
         working-directory: mobile/android
         env:
-          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/orchard-release.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/veyra-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets['ANDROID_KEYSTORE_PASSWORD'] }}
+          ANDROID_KEY_ALIAS: ${{ secrets['ANDROID_KEY_ALIAS'] }}
+          ANDROID_KEY_PASSWORD: ${{ secrets['ANDROID_KEY_PASSWORD'] }}
         run: |
           set -euo pipefail
           chmod +x gradlew

@@ -685,9 +685,16 @@ class VeyraPlaybackService : MediaLibraryService() {
     private fun persistPlayback(sync: Boolean = false) {
         val source = authoritativePlayer() ?: return
         val queue = buildList {
-            for (index in 0 until source.mediaItemCount) add(
-                MediaItemMapper.toTrack(source.getMediaItemAt(index))
-            )
+            for (index in 0 until source.mediaItemCount) {
+                val item = source.getMediaItemAt(index)
+                val track = MediaItemMapper.toTrack(item)
+                val resolved = if (track.title.isBlank() && track.id.isNotBlank()) {
+                    browseTree.item(track.id)?.let(MediaItemMapper::toTrack)
+                        ?: stateStore.load().queue.firstOrNull { it.id == track.id }
+                        ?: track
+                } else track
+                add(resolved)
+            }
         }
         val restored = RestoredPlayback(
             queue = queue,

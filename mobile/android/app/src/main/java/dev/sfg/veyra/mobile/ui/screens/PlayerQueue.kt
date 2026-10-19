@@ -72,6 +72,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,11 +80,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,6 +104,21 @@ import dev.sfg.veyra.mobile.ui.components.ArtworkTile
 import dev.sfg.veyra.mobile.ui.components.ExplicitBadge
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.LocalIsTv
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
+
+internal fun queueCanMoveUp(index: Int, currentIndex: Int): Boolean = index > currentIndex + 1
+
+internal fun queueCanMoveDown(index: Int, queueSize: Int): Boolean = index >= 0 && index < queueSize - 1
+
+internal fun upcomingQueueKeys(tracks: List<Track>): List<String> {
+    val occurrences = mutableMapOf<String, Int>()
+    return tracks.map { track ->
+        val occurrence = occurrences.getOrDefault(track.id, 0)
+        occurrences[track.id] = occurrence + 1
+        "upcoming:${track.id}:$occurrence"
+    }
+}
 
 /**
  * The queue as a mode of the player rather than a destination: the transport below stays put and
@@ -124,8 +147,14 @@ fun PlayerQueuePanel(
     onSleepTimer: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val isTv = LocalIsTv.current
+    val queueEntryFocus = remember { FocusRequester() }
+    LaunchedEffect(isTv) {
+        if (isTv) runCatching { queueEntryFocus.requestFocus() }
+    }
     val history = playback.history.takeLast(4)
     val historyStart = playback.currentIndex - history.size
+    val upcomingKeys = remember(playback.upcoming) { upcomingQueueKeys(playback.upcoming) }
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = remember { 0 },
     )
@@ -135,18 +164,19 @@ fun PlayerQueuePanel(
                 QueueTopControls(
                     shuffle = playback.shuffle,
                     repeatMode = playback.repeatMode,
-                    onShuffle = onShuffle,
-                    onRepeat = onRepeat,
+                    onShuffle = onShuffle.takeIf { editable },
+                    onRepeat = onRepeat.takeIf { editable },
                     smartCrossfade = smartCrossfade,
-                    onBestMixUpcoming = onBestMixUpcoming,
+                    onBestMixUpcoming = onBestMixUpcoming.takeIf { editable },
                     upcomingCount = 0,
                     autoplayEnabled = autoplayEnabled,
                     autoplayLoading = autoplayLoading,
                     autoplayError = autoplayError,
-                    onAutoplayEnabled = onAutoplayEnabled,
+                    onAutoplayEnabled = onAutoplayEnabled.takeIf { editable },
                     sleepTimerRemainingSeconds = sleepTimerRemainingSeconds,
                     sleepTimerEndOfTrack = sleepTimerEndOfTrack,
                     onSleepTimer = onSleepTimer,
+                    initialFocusRequester = queueEntryFocus,
                 )
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     QueueNotice(
@@ -167,18 +197,19 @@ fun PlayerQueuePanel(
             QueueTopControls(
                 shuffle = playback.shuffle,
                 repeatMode = playback.repeatMode,
-                onShuffle = onShuffle,
-                onRepeat = onRepeat,
+                onShuffle = onShuffle.takeIf { editable },
+                onRepeat = onRepeat.takeIf { editable },
                 smartCrossfade = smartCrossfade,
-                onBestMixUpcoming = onBestMixUpcoming,
+                onBestMixUpcoming = onBestMixUpcoming.takeIf { editable },
                 upcomingCount = playback.upcoming.size,
                 autoplayEnabled = autoplayEnabled,
                 autoplayLoading = autoplayLoading,
                 autoplayError = autoplayError,
-                onAutoplayEnabled = onAutoplayEnabled,
+                onAutoplayEnabled = onAutoplayEnabled.takeIf { editable },
                 sleepTimerRemainingSeconds = sleepTimerRemainingSeconds,
                 sleepTimerEndOfTrack = sleepTimerEndOfTrack,
                 onSleepTimer = onSleepTimer,
+                initialFocusRequester = queueEntryFocus,
             )
         }
         if (history.isNotEmpty()) {
@@ -187,6 +218,7 @@ fun PlayerQueuePanel(
                 val index = historyStart + offset
                 QueueTrackRow(
                     track = track, index = index, queueSize = playback.queue.size,
+                    currentIndex = playback.currentIndex,
                     editable = false, isHistory = true,
                     onPlay = { onPlayIndex(index) }, onRemove = onRemove, onMove = onMove,
                 )
@@ -218,10 +250,11 @@ fun PlayerQueuePanel(
                 )
             }
         }
-        itemsIndexed(playback.upcoming, key = { index, track -> "upcoming:$index:${track.id}" }) { offset, track ->
+        itemsIndexed(playback.upcoming, key = { index, _ -> upcomingKeys[index] }) { offset, track ->
             val index = playback.currentIndex + 1 + offset
             QueueTrackRow(
                 track = track, index = index, queueSize = playback.queue.size,
+                currentIndex = playback.currentIndex,
                 editable = editable, isHistory = false,
                 onPlay = { onPlayIndex(index) }, onRemove = onRemove, onMove = onMove,
             )
@@ -250,6 +283,7 @@ fun QueueTopControls(
     sleepTimerEndOfTrack: Boolean,
     onSleepTimer: () -> Unit,
     modifier: Modifier = Modifier,
+    initialFocusRequester: FocusRequester? = null,
 ) {
     var isSorting by remember { mutableStateOf(false) }
     var sortStatusText by remember { mutableStateOf("") }
@@ -268,19 +302,26 @@ fun QueueTopControls(
                 icon = Icons.Rounded.Shuffle,
                 active = shuffle,
                 onClick = { onShuffle?.invoke() },
-                modifier = Modifier.weight(1f)
+                contentDescription = stringResource(R.string.playerx_shuffle_cd),
+                enabled = onShuffle != null,
+                focusRequester = initialFocusRequester,
+                modifier = Modifier.weight(1f),
             )
             QueueTopPill(
                 icon = if (repeatMode == dev.sfg.veyra.mobile.model.RepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                 active = repeatMode != dev.sfg.veyra.mobile.model.RepeatMode.OFF,
                 onClick = { onRepeat?.invoke() },
-                modifier = Modifier.weight(1f)
+                contentDescription = stringResource(R.string.playerx_repeat_cd),
+                enabled = onRepeat != null,
+                modifier = Modifier.weight(1f),
             )
             QueueTopPill(
                 icon = Icons.Rounded.AllInclusive,
                 active = autoplayEnabled,
                 onClick = { onAutoplayEnabled?.invoke(!autoplayEnabled) },
-                modifier = Modifier.weight(1f)
+                contentDescription = stringResource(R.string.settings_autoplay),
+                enabled = onAutoplayEnabled != null,
+                modifier = Modifier.weight(1f),
             )
             QueueTopPill(
                 icon = Icons.Rounded.AutoAwesome,
@@ -294,8 +335,41 @@ fun QueueTopControls(
                         )
                     }
                 },
-                modifier = Modifier.weight(1f)
+                contentDescription = stringResource(R.string.player_best_mix),
+                enabled = !isSorting && upcomingCount > 1 && onBestMixUpcoming != null,
+                modifier = Modifier.weight(1f),
             )
+        }
+
+        if (isSorting || sortStatusText.isNotBlank() || autoplayLoading || autoplayError.isNotBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                if (isSorting || autoplayLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = LocalAccent.current,
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                val status = when {
+                    autoplayError.isNotBlank() -> autoplayError
+                    sortStatusText.isNotBlank() -> sortStatusText
+                    autoplayLoading -> stringResource(R.string.home_loading)
+                    else -> stringResource(R.string.msg_sorting_queue)
+                }
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (autoplayError.isNotBlank()) Color(0xFFFF8A80) else Color.White.copy(alpha = 0.75f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         // Keep sleep timer below if active or available
@@ -316,7 +390,11 @@ fun QueueTopControls(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable(onClick = onSleepTimer),
+                    .then(
+                        if (LocalIsTv.current) {
+                            Modifier.tvFocusable(shape = RoundedCornerShape(16.dp), scale = 1.02f, onClick = onSleepTimer)
+                        } else Modifier.clickable(onClick = onSleepTimer),
+                    ),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -364,6 +442,9 @@ private fun QueueTopPill(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     active: Boolean,
     onClick: () -> Unit,
+    contentDescription: String,
+    enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     val activeBrush = remember {
@@ -384,7 +465,8 @@ private fun QueueTopPill(
         shape = CircleShape,
         border = if (active) activeBorder else inactiveBorder,
         modifier = modifier
-            .height(38.dp)
+            .height(if (LocalIsTv.current) 52.dp else 38.dp)
+            .then(if (LocalIsTv.current && focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .shadow(
                 elevation = if (active) 4.dp else 2.dp,
                 shape = CircleShape,
@@ -392,14 +474,19 @@ private fun QueueTopPill(
             )
             .clip(CircleShape)
             .background(if (active) activeBrush else inactiveBrush, CircleShape)
-            .clickable(onClick = onClick)
+            .alpha(if (enabled) 1f else 0.42f)
+            .then(
+                if (LocalIsTv.current) {
+                    Modifier.tvFocusable(shape = CircleShape, scale = 1.06f, enabled = enabled, onClick = onClick)
+                } else Modifier.clickable(enabled = enabled, onClick = onClick),
+            )
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = contentDescription,
                 tint = if (active) Color.White else Color(0xFF94A3B8),
-                modifier = Modifier.size(19.dp)
+                modifier = Modifier.size(if (LocalIsTv.current) 24.dp else 19.dp)
             )
         }
     }
@@ -426,26 +513,22 @@ private fun QueueSectionHeader(title: String, trailing: (@Composable () -> Unit)
 
 @Composable
 private fun QueueShuffleButton(onShuffleUpcoming: () -> Unit) {
-    IconButton(onClick = onShuffleUpcoming, modifier = Modifier.size(36.dp)) {
-        Icon(
-            Icons.Rounded.Shuffle,
-            stringResource(R.string.queue_shuffle_upcoming),
-            tint = Color.White.copy(alpha = 0.75f),
-            modifier = Modifier.size(20.dp),
-        )
-    }
+    QueueActionButton(
+        icon = Icons.Rounded.Shuffle,
+        description = stringResource(R.string.queue_shuffle_upcoming),
+        enabled = true,
+        onClick = onShuffleUpcoming,
+    )
 }
 
 @Composable
 private fun QueueClearButton(onClearUpcoming: () -> Unit) {
-    IconButton(onClick = onClearUpcoming, modifier = Modifier.size(36.dp)) {
-        Icon(
-            Icons.Rounded.ClearAll,
-            stringResource(R.string.queue_clear_upcoming),
-            tint = Color.White.copy(alpha = 0.75f),
-            modifier = Modifier.size(20.dp),
-        )
-    }
+    QueueActionButton(
+        icon = Icons.Rounded.ClearAll,
+        description = stringResource(R.string.queue_clear_upcoming),
+        enabled = true,
+        onClick = onClearUpcoming,
+    )
 }
 
 @Composable
@@ -473,6 +556,7 @@ private fun QueueTrackRow(
     track: Track,
     index: Int,
     queueSize: Int,
+    currentIndex: Int,
     editable: Boolean,
     isHistory: Boolean,
     onPlay: () -> Unit,
@@ -480,12 +564,19 @@ private fun QueueTrackRow(
     onMove: (Int, Int) -> Unit,
 ) {
     val rowShape = RoundedCornerShape(12.dp)
+    val isTv = LocalIsTv.current
     Surface(
-        onClick = onPlay,
         color = if (isHistory) Color.Transparent else Color(0xFF131B2B).copy(alpha = 0.50f),
         shape = rowShape,
         border = if (isHistory) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .then(
+                if (isTv) Modifier.tvFocusable(shape = rowShape, scale = 1.025f, onClick = onPlay)
+                else Modifier.clickable(onClick = onPlay),
+            )
+            .semantics { role = Role.Button },
     ) {
         Row(
             Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
@@ -525,13 +616,13 @@ private fun QueueTrackRow(
                 QueueRowButton(
                     icon = Icons.Rounded.KeyboardArrowUp,
                     description = stringResource(R.string.queue_move_up_cd, track.title),
-                    enabled = index > 0,
+                    enabled = queueCanMoveUp(index, currentIndex),
                     onClick = { onMove(index, index - 1) },
                 )
                 QueueRowButton(
                     icon = Icons.Rounded.KeyboardArrowDown,
                     description = stringResource(R.string.queue_move_down_cd, track.title),
-                    enabled = index < queueSize - 1,
+                    enabled = queueCanMoveDown(index, queueSize),
                     onClick = { onMove(index, index + 1) },
                 )
                 QueueRowButton(
@@ -552,12 +643,32 @@ private fun QueueRowButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(34.dp)) {
+    QueueActionButton(icon, description, enabled, onClick)
+}
+
+@Composable
+private fun QueueActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val isTv = LocalIsTv.current
+    Box(
+        modifier = Modifier
+            .size(if (isTv) 48.dp else 36.dp)
+            .then(
+                if (isTv) Modifier.tvFocusable(shape = CircleShape, scale = 1.08f, enabled = enabled, onClick = onClick)
+                else Modifier.clickable(enabled = enabled, onClick = onClick),
+            )
+            .semantics { contentDescription = description; role = Role.Button },
+        contentAlignment = Alignment.Center,
+    ) {
         Icon(
-            icon,
-            description,
+            imageVector = icon,
+            contentDescription = null,
             tint = if (enabled) Color(0xFFCBD5E1) else Color.White.copy(alpha = 0.20f),
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(if (isTv) 24.dp else 20.dp),
         )
     }
 }

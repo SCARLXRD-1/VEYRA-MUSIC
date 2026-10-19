@@ -48,6 +48,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import java.util.concurrent.ConcurrentHashMap
+
 /** UI-side Media3 controller; the service remains the authoritative local player. */
 class LocalPlaybackController(
     private val context: Context,
@@ -62,6 +64,7 @@ class LocalPlaybackController(
     private var controller: MediaController? = null
     private var progressJob: Job? = null
     private val pendingActions = ArrayDeque<(MediaController) -> Unit>()
+    private val trackCache = ConcurrentHashMap<String, Track>()
 
     /**
      * The failure the player last reported, and the item it happened on.
@@ -76,6 +79,9 @@ class LocalPlaybackController(
     private var lastErrorItemId: String? = null
 
     init {
+        // Pre-popula el cache con la cola persistida para resolver metadatos inmediatamente
+        val restored = PlaybackStateStore(context).load()
+        restored.queue.forEach { if (it.id.isNotBlank() && it.title.isNotBlank()) trackCache[it.id] = it }
         connect()
     }
 
@@ -92,6 +98,7 @@ class LocalPlaybackController(
             Log.w(TAG, "replaceQueue: QueueEditor returned empty tracks")
             return
         }
+        edited.tracks.forEach { if (it.id.isNotBlank() && it.title.isNotBlank()) trackCache[it.id] = it }
         withController {
             Log.d(TAG, "replaceQueue: dispatching setMediaItems with ${edited.tracks.size} items to MediaController")
             it.setPlaylistMetadata(MediaMetadata.Builder().setTitle(contextTitle).build())
@@ -109,6 +116,7 @@ class LocalPlaybackController(
     fun replaceQueued(index: Int, expectedId: String, track: Track) = withController { player ->
         if (index == player.currentMediaItemIndex || index !in 0 until player.mediaItemCount) return@withController
         if (player.getMediaItemAt(index).mediaId != expectedId) return@withController
+        if (track.id.isNotBlank() && track.title.isNotBlank()) trackCache[track.id] = track
         player.replaceMediaItem(index, MediaItemMapper.toMediaItem(track))
     }
 
@@ -118,6 +126,7 @@ class LocalPlaybackController(
         if (index !in 0 until player.mediaItemCount) return@withController
         val current = player.getMediaItemAt(index)
         if (current.mediaId != expectedId) return@withController
+        if (track.id.isNotBlank() && track.title.isNotBlank()) trackCache[track.id] = track
         val position = player.currentPosition.coerceAtLeast(0)
         val videoId = current.localConfiguration?.uri
             ?.takeIf(MediaItemMapper::isVideoUri)
@@ -134,11 +143,15 @@ class LocalPlaybackController(
     }
 
     fun playNext(track: Track) = withController { player ->
+        if (track.id.isNotBlank() && track.title.isNotBlank()) trackCache[track.id] = track
         val index = (player.currentMediaItemIndex + 1).coerceIn(0, player.mediaItemCount)
         player.addMediaItem(index, MediaItemMapper.toMediaItem(track))
     }
 
-    fun addToQueue(track: Track) = withController { it.addMediaItem(MediaItemMapper.toMediaItem(track)) }
+    fun addToQueue(track: Track) = withController {
+        if (track.id.isNotBlank() && track.title.isNotBlank()) trackCache[track.id] = track
+        it.addMediaItem(MediaItemMapper.toMediaItem(track))
+    }
     fun remove(index: Int) = withController { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) }
     fun move(from: Int, to: Int) = withController {
         if (from in 0 until it.mediaItemCount && to in 0 until it.mediaItemCount) it.moveMediaItem(from, to)
@@ -231,18 +244,19 @@ class LocalPlaybackController(
      * from reinserting whatever became current while it was waiting.
      */
     fun appendUpcoming(tracks: List<Track>, totalLimit: Int) = withController { player ->
+        tracks.forEach { if (it.id.isNotBlank() && it.title.isNotBlank()) trackCache[it.id] = it }
         // Heal any duplicate generated rows already present before adding another refill. This is
         // deliberately limited to upcoming Autoplay rows: duplicate songs explicitly placed in a
         // playlist or queue remain literal user choices.
         val before = (0 until player.mediaItemCount)
-            .map { MediaItemMapper.toTrack(player.getMediaItemAt(it)) }
+            .map { resolveTrack(player.getMediaItemAt(it)) }
         AutoplayRecommendations.duplicateGeneratedIndices(before)
             .asReversed()
             .filter { it > player.currentMediaItemIndex }
             .forEach(player::removeMediaItem)
 
         val existing = (0 until player.mediaItemCount)
-            .map { MediaItemMapper.toTrack(player.getMediaItemAt(it)) }
+            .map { resolveTrack(player.getMediaItemAt(it)) }
         val upcoming = player.mediaItemCount - player.currentMediaItemIndex - 1
         val room = (totalLimit - upcoming).coerceAtLeast(0)
         if (room == 0) return@withController
@@ -324,12 +338,33 @@ class LocalPlaybackController(
         lastErrorItemId = null
     }
 
+    private fun resolveTrack(mediaItem: MediaItem): Track {
+        val raw = MediaItemMapper.toTrack(mediaItem)
+        if (raw.title.isBlank() && raw.id.isNotBlank()) {
+            val cached = trackCache[raw.id] ?: run {
+                val disk = PlaybackStateStore(context).load().queue.firstOrNull { it.id == raw.id }
+                if (disk != null && disk.title.isNotBlank()) {
+                    trackCache[raw.id] = disk
+                    disk
+                } else null
+            }
+            if (cached != null) {
+                return if (raw.musicVideoId.isNotBlank() && cached.musicVideoId.isBlank()) {
+                    cached.copy(musicVideoId = raw.musicVideoId)
+                } else cached
+            }
+        } else if (raw.id.isNotBlank() && raw.title.isNotBlank()) {
+            trackCache[raw.id] = raw
+        }
+        return raw
+    }
+
     private fun publish(player: Player?, explicitError: String = "") {
         if (player == null) return
         val queue = buildList {
-            for (index in 0 until player.mediaItemCount) add(MediaItemMapper.toTrack(player.getMediaItemAt(index)))
+            for (index in 0 until player.mediaItemCount) add(resolveTrack(player.getMediaItemAt(index)))
         }
-        val current = player.currentMediaItem?.let(MediaItemMapper::toTrack)
+        val current = player.currentMediaItem?.let(::resolveTrack)
         // A held failure belongs to the item it happened on. Moving to another track, or
         // this one becoming playable, means it no longer describes anything.
         if (lastError.isNotBlank() &&

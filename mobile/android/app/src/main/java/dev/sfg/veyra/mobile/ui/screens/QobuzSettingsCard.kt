@@ -34,7 +34,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Login
+import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -109,12 +116,29 @@ fun QobuzSettingsCard(
 
             Spacer(Modifier.height(12.dp))
 
-            Text(
-                text = stringResource(R.string.qobuz_requires_subscription),
-                style = MaterialTheme.typography.bodySmall,
-                color = CanopyColors.Muted,
-                lineHeight = 18.sp,
-            )
+            Surface(
+                color = Color.White.copy(alpha = 0.04f),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Rounded.Info,
+                        contentDescription = null,
+                        tint = QobuzGold.copy(alpha = 0.85f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.qobuz_requires_subscription),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        color = CanopyColors.Muted,
+                    )
+                }
+            }
 
             if (status.lastError.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
@@ -128,7 +152,12 @@ fun QobuzSettingsCard(
             Spacer(Modifier.height(14.dp))
 
             if (!isConnected) {
-                IntegrationAction(stringResource(R.string.qobuz_sign_in), onClick = onConnect)
+                IntegrationAction(
+                    label = stringResource(R.string.qobuz_sign_in),
+                    icon = Icons.Rounded.Login,
+                    accentColor = QobuzGold,
+                    onClick = onConnect,
+                )
             } else {
                 // Quality options row
                 Text(
@@ -175,7 +204,12 @@ fun QobuzSettingsCard(
 
                 Spacer(Modifier.height(12.dp))
 
-                IntegrationAction(stringResource(R.string.qobuz_sign_out), destructive = true, onClick = onDisconnect)
+                IntegrationAction(
+                    label = stringResource(R.string.qobuz_sign_out),
+                    icon = Icons.Rounded.Logout,
+                    destructive = true,
+                    onClick = onDisconnect,
+                )
             }
         }
     }

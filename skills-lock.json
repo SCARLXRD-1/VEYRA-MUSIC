@@ -4,17 +4,17 @@
     "accessibility": {
       "source": "addyosmani/web-quality-skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "bffe3d08cfe92ebad63699f74ce29e35c19850ebfbf474c1463183cfe34d6a09"
+      "computedHash": "2174f783a038a7ca4869c4c18e14726ec13b9c6b705d59253f647d0ca37cb78d"
     },
     "bash-defensive-patterns": {
       "source": "wshobson/agents",
       "sourceType": "autoskills-registry",
-      "computedHash": "1f566c2d9c3b50a784b05d08f6b08ebfeb31f038e4d4173f2d488484edb058a6"
+      "computedHash": "2c6409224fbb56ceff6655b73cb03a736ea6c89e622734752c568efafd59a964"
     },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "82fb11a63fb1e35ee2469516ed02d54695f783115b1540c0e783197af4240a3a"
+      "computedHash": "a4e6516a601f72ffd8bcd0d64609e8ba724d2ce92569a059a6890a5caadf072b"
     },
     "gsap-core": {
       "source": "greensock/gsap-skills",
@@ -54,32 +54,32 @@
     "nodejs-backend-patterns": {
       "source": "wshobson/agents",
       "sourceType": "autoskills-registry",
-      "computedHash": "710a5e6f83c46e8f6c43356df55c143a7375c4414559a581654ce51709138c55"
+      "computedHash": "ec099fc7d7ece12e8a89c24b12eff36f27dd243db15c5a70f3df8406ec9c738e"
     },
     "nodejs-best-practices": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "7361ab02fb6b09913e3bdd9cf61c629ed6c17de9485e6a781054e5d437ccfc29"
+      "computedHash": "2c543ab51c9c4093c8a94aa615f39ca55d93835816aeeaa5bbd89261d85c584c"
     },
     "seo": {
       "source": "addyosmani/web-quality-skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "c184da724d1c61ad077f27418ea8e7e88fd54bcdf98165e18be7e4681cbd5e20"
+      "computedHash": "7495da57766c99f787a729d4a21234ecb5d29d90f304a0d9a5996dcdc1eec048"
     },
     "vite": {
       "source": "antfu/skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "e0b52fe3ffea533e1e543ac8a8a20fccca3beed9f8bdc31a0934fe9f554439e8"
+      "computedHash": "9b57a2fff4dbb3c38e7f2e511f4125784f11cd67f54e89d3e7d9c57fe5834bd5"
     },
     "vue": {
       "source": "antfu/skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "4cc429a32520d5a7615d572687c902637459dfd6c92b7faf74afb879247dfbc4"
+      "computedHash": "112108a26fbd3010ebe0a4c5b08bf38553d46f2c4b35c68dbbbf478ed618f2a4"
     },
     "vue-best-practices": {
-      "source": "antfu/skills",
+      "source": "vuejs-ai/skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "1f369104c1aac5c101d71b65a2bd317ad2a1d3ceda160cb5d45da9b389a3f53f"
+      "computedHash": "a457d007f3461b79a49bc977a84c1a6f511c191e541be36d382a28653f4d3201"
     },
     "vue-debug-guides": {
       "source": "hyf0/vue-skills",
@@ -89,7 +89,7 @@
     "zod": {
       "source": "pproenca/dot-skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "aa8a97195b07763d37494b511f48be90979fd6826c031956c831cfc58f6a24b8"
+      "computedHash": "2e6455bb2c68a46f88db0fef1151cdb4d0a50b57b6a0cdbe7fa3b68641adf45b"
     }
   }
 }

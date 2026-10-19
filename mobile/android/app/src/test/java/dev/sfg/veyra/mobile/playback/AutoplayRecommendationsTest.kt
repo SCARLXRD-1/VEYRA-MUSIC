@@ -31,6 +31,33 @@ import org.junit.Test
 
 class AutoplayRecommendationsTest {
     @Test
+    fun `offline autoplay excludes queued downloads and applies its refill limit`() {
+        val candidates = AutoplayRecommendations.offlineCandidates(
+            downloaded = listOf(
+                track("current", "Current", "Artist"),
+                track("one", "One", "Artist"),
+                track("one", "One duplicate row", "Artist"),
+                track("two", "Two", "Artist"),
+            ),
+            queuedIds = setOf("current"),
+            limit = 1,
+        )
+
+        assertEquals(listOf("one"), candidates.map(Track::id))
+    }
+
+    @Test
+    fun `offline autoplay returns no duplicates when all downloads are already queued`() {
+        val candidates = AutoplayRecommendations.offlineCandidates(
+            downloaded = listOf(track("one", "One", "Artist"), track("two", "Two", "Artist")),
+            queuedIds = setOf("one", "two"),
+            limit = 10,
+        )
+
+        assertEquals(emptyList<Track>(), candidates)
+    }
+
+    @Test
     fun `different video ids for the same song collapse to one recommendation`() {
         val selected = AutoplayRecommendations.select(
             existing = emptyList(),

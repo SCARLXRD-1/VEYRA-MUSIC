@@ -46,8 +46,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,6 +58,8 @@ import dev.sfg.veyra.mobile.auth.AuthState
 import dev.sfg.veyra.mobile.model.OrchardSettings
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.LocalIsTv
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 import androidx.compose.ui.res.stringResource
 import dev.sfg.veyra.connect.R
 
@@ -71,8 +76,18 @@ fun WelcomeScreen(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onFinish: () -> Unit,
+    sessionQrPayload: String = "",
+    sessionQrStatus: String = "",
+    onStartSessionQr: () -> Unit = {},
+    onCancelSessionQr: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
+    val firstFocusRequester = remember { FocusRequester() }
+    val isTv = LocalIsTv.current
+
+    LaunchedEffect(isTv) {
+        if (isTv) firstFocusRequester.requestFocus()
+    }
 
     Box(
         modifier = Modifier
@@ -92,7 +107,7 @@ fun WelcomeScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            WelcomeLanguageSection()
+            WelcomeLanguageSection(firstFocusRequester)
 
             Spacer(Modifier.height(22.dp))
 
@@ -101,6 +116,15 @@ fun WelcomeScreen(
                 onSignIn = onSignIn,
                 onSignOut = onSignOut,
             )
+
+            if (isTv && auth !is AuthState.SignedIn) {
+                WelcomeSessionQrSection(
+                    qrPayload = sessionQrPayload,
+                    status = sessionQrStatus,
+                    onStart = onStartSessionQr,
+                    onCancel = onCancelSessionQr,
+                )
+            }
 
             Spacer(Modifier.height(22.dp))
 
@@ -134,7 +158,12 @@ fun WelcomeScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(56.dp)
+                    .tvFocusable(
+                        shape = CircleShape,
+                        scale = 1.035f,
+                        onClick = onFinish,
+                    ),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

@@ -35,6 +35,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -89,14 +94,31 @@ fun LastfmSettingsCard(
             when (state) {
                 LastfmState.SignedOut,
                 is LastfmState.Error ->
-                    IntegrationAction(stringResource(R.string.lastfm_connect), onClick = onConnect)
+                    IntegrationAction(
+                        label = stringResource(R.string.lastfm_connect),
+                        icon = Icons.Rounded.Link,
+                        accentColor = LastfmRed,
+                        onClick = onConnect,
+                    )
                 LastfmState.Connecting ->
-                    IntegrationAction(stringResource(R.string.lastfm_connecting), onClick = {})
+                    IntegrationAction(
+                        label = stringResource(R.string.lastfm_connecting),
+                        icon = Icons.Rounded.Sync,
+                        accentColor = LastfmRed,
+                        enabled = false,
+                        onClick = {},
+                    )
                 is LastfmState.Pending ->
-                    IntegrationAction(stringResource(R.string.lastfm_finish_connection), onClick = onComplete)
+                    IntegrationAction(
+                        label = stringResource(R.string.lastfm_finish_connection),
+                        icon = Icons.Rounded.CheckCircle,
+                        accentColor = LastfmRed,
+                        onClick = onComplete,
+                    )
                 is LastfmState.Connected ->
                     IntegrationAction(
-                        stringResource(R.string.lastfm_sign_out),
+                        label = stringResource(R.string.lastfm_sign_out),
+                        icon = Icons.Rounded.Logout,
                         destructive = true,
                         onClick = onDisconnect,
                     )

@@ -381,6 +381,8 @@ private fun OrchardNavigation(
     library: dev.sfg.veyra.mobile.model.LibrarySnapshot,
     settings: dev.sfg.veyra.mobile.model.OrchardSettings,
 ) {
+    val currentBackStackEntry by nav.currentBackStackEntryAsState()
+    val visibleRoute = currentBackStackEntry?.destination?.route
     val home by viewModel.home.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val search by viewModel.search.collectAsStateWithLifecycle()
@@ -391,6 +393,8 @@ private fun OrchardNavigation(
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val artistImages by viewModel.artistImages.collectAsStateWithLifecycle()
     val auth by viewModel.auth.collectAsStateWithLifecycle()
+    val sessionQrPayload by viewModel.sessionQrPayload.collectAsStateWithLifecycle()
+    val sessionQrStatus by viewModel.sessionQrStatus.collectAsStateWithLifecycle()
     val discordAuth by viewModel.discordAuth.collectAsStateWithLifecycle()
     val discordConnection by viewModel.discordConnection.collectAsStateWithLifecycle()
     val lastfmState by viewModel.lastfmState.collectAsStateWithLifecycle()
@@ -429,6 +433,12 @@ private fun OrchardNavigation(
         }
     }
 
+    LaunchedEffect(sessionQrStatus, visibleRoute) {
+        if (visibleRoute == Routes.DEVICES && sessionQrStatus.isNotBlank()) {
+            android.widget.Toast.makeText(context, sessionQrStatus, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.WELCOME) {
             WelcomeScreen(
@@ -437,6 +447,10 @@ private fun OrchardNavigation(
                 onUpdateSettings = viewModel::updateSettings,
                 onSignIn = { nav.safeNavigate(Routes.LOGIN) },
                 onSignOut = viewModel::signOut,
+                sessionQrPayload = sessionQrPayload,
+                sessionQrStatus = sessionQrStatus,
+                onStartSessionQr = viewModel::startSessionQr,
+                onCancelSessionQr = viewModel::cancelSessionQr,
                 onFinish = {
                     viewModel.updateSettings(settings.copy(onboardingCompleted = true))
                     nav.navigate(Routes.HOME) {
@@ -707,6 +721,7 @@ private fun OrchardNavigation(
                 onBack = nav::popBackStack,
                 onSelect = viewModel::selectTarget,
                 onPair = viewModel::pairDevice,
+                onTransferSession = viewModel::importSessionQr,
                 onDisconnect = viewModel::disconnectDevice,
                 onPresetSelect = viewModel::setAudioEnginePreset,
                 onToggleAutoEq = viewModel::toggleAutoEq,

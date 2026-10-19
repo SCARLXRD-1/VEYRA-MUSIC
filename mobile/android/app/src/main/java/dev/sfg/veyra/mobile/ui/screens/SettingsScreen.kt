@@ -26,6 +26,7 @@ package dev.sfg.veyra.mobile.ui.screens
 import android.content.Context
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -39,6 +40,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,8 +61,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import dev.sfg.veyra.mobile.ui.scroll.orchardVerticalScroll as verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.Login
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -81,10 +86,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -548,17 +556,37 @@ private fun AccountCard(
             when (auth) {
                 AuthState.SignedOut -> {
                     PanelDivider()
-                    AccountButton(stringResource(R.string.action_sign_in), onSignIn, primary = true)
+                    AccountButton(
+                        label = stringResource(R.string.action_sign_in),
+                        onClick = onSignIn,
+                        primary = true,
+                        icon = Icons.AutoMirrored.Rounded.Login,
+                    )
                 }
                 is AuthState.Error -> {
                     PanelDivider()
-                    AccountButton(stringResource(R.string.action_retry), onSignIn, primary = true)
+                    AccountButton(
+                        label = stringResource(R.string.action_retry),
+                        onClick = onSignIn,
+                        primary = true,
+                        icon = Icons.Rounded.Sync,
+                    )
                 }
                 is AuthState.SignedIn -> {
                     PanelDivider()
-                    AccountButton(stringResource(R.string.action_switch_account), onSwitchAccount, primary = true)
+                    AccountButton(
+                        label = stringResource(R.string.action_switch_account),
+                        onClick = onSwitchAccount,
+                        primary = true,
+                        icon = Icons.Rounded.Sync,
+                    )
                     PanelDivider()
-                    AccountButton(stringResource(R.string.action_sign_out), onSignOut, primary = false)
+                    AccountButton(
+                        label = stringResource(R.string.action_sign_out),
+                        onClick = onSignOut,
+                        primary = false,
+                        icon = Icons.AutoMirrored.Rounded.Logout,
+                    )
                 }
                 else -> Unit
             }
@@ -581,17 +609,23 @@ private fun AccountText(title: String, subtitle: String, titleColor: Color = Can
 }
 
 @Composable
-private fun AccountButton(label: String, onClick: () -> Unit, primary: Boolean) {
-    Surface(
-        onClick = onClick,
-        color = Color.Transparent,
-        modifier = Modifier.fillMaxWidth(),
+private fun AccountButton(
+    label: String,
+    onClick: () -> Unit,
+    primary: Boolean,
+    icon: ImageVector? = null,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 4.dp),
     ) {
-        Text(
-            label,
-            color = if (primary) LocalAccent.current else CanopyColors.Danger,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+        IntegrationAction(
+            label = label,
+            onClick = onClick,
+            destructive = !primary,
+            icon = icon,
+            accentColor = if (primary) LocalAccent.current else null,
         )
     }
 }
@@ -785,15 +819,32 @@ private fun ActionRow(
     subtitle: String,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val haptic = LocalHapticFeedback.current
+
+    val chevronOffset by animateFloatAsState(
+        targetValue = if (isPressed) 3f else 0f,
+        animationSpec = spring(stiffness = 500f),
+        label = "ActionRowChevronOffset",
+    )
+
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                },
+            )
             .defaultMinSize(minHeight = 64.dp)
+            .background(if (isPressed) Color.White.copy(alpha = 0.04f) else Color.Transparent)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-
         Column(Modifier.weight(1f).padding(end = 16.dp)) {
             Text(
                 title,
@@ -805,9 +856,87 @@ private fun ActionRow(
         Icon(
             Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
-            tint = CanopyColors.Muted,
-            modifier = Modifier.size(22.dp),
+            tint = if (isPressed) Color.White else CanopyColors.Muted,
+            modifier = Modifier
+                .size(22.dp)
+                .offset(x = chevronOffset.dp),
         )
+    }
+}
+
+/** Segmented control reactivo con micro-escala, aura azul y vibración háptica. */
+@Composable
+private fun <T> SegmentedControl(
+    items: List<T>,
+    selectedItem: T,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = LocalHapticFeedback.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(CircleShape)
+            .background(Color(0xFF080C14))
+            .border(1.dp, Color(0x1AFFFFFF), CircleShape)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items.forEach { item ->
+            val isSelected = item == selectedItem
+            val animatedScale by animateFloatAsState(
+                targetValue = if (isSelected) 1.02f else 1f,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "SegmentedScale",
+            )
+            val animatedElevation by animateFloatAsState(
+                targetValue = if (isSelected) 4f else 0f,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "SegmentedElevation",
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp)
+                    .shadow(
+                        elevation = animatedElevation.dp,
+                        shape = CircleShape,
+                        spotColor = Color(0xFF1E6CEB).copy(alpha = 0.55f),
+                    )
+                    .clip(CircleShape)
+                    .graphicsLayer {
+                        scaleX = animatedScale
+                        scaleY = animatedScale
+                    }
+                    .background(
+                        if (isSelected) {
+                            Brush.verticalGradient(listOf(Color(0xFF2E84FE), Color(0xFF104EB6)))
+                        } else {
+                            Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+                        }
+                    )
+                    .then(
+                        if (isSelected) {
+                            Modifier.border(1.dp, Color(0x66FFFFFF), CircleShape)
+                        } else Modifier
+                    )
+                    .clickable {
+                        if (!isSelected) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSelect(item)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label(item),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) Color.White else CanopyColors.Muted,
+                )
+            }
+        }
     }
 }
 
@@ -830,49 +959,15 @@ private fun LanguageRow() {
             )
         }
         Spacer(Modifier.height(14.dp))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .background(Color(0xFF080C14))
-                .border(1.dp, Color(0x1AFFFFFF), CircleShape)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            AppLanguage.entries.forEach { option ->
-                val isSelected = option == language
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(38.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) {
-                                Brush.verticalGradient(listOf(Color(0xFF2E84FE), Color(0xFF104EB6)))
-                            } else {
-                                Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-                            }
-                        )
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(1.dp, Color(0x66FFFFFF), CircleShape)
-                            } else Modifier
-                        )
-                        .clickable {
-                            language = option
-                            AppLocale.apply(context, option)
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        option.label(context),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else CanopyColors.Muted,
-                    )
-                }
-            }
-        }
+        SegmentedControl(
+            items = AppLanguage.entries,
+            selectedItem = language,
+            onSelect = { option ->
+                language = option
+                AppLocale.apply(context, option)
+            },
+            label = { it.label(context) },
+        )
     }
 }
 
@@ -889,7 +984,6 @@ private fun QualityRow(value: AudioQuality, onChange: (AudioQuality) -> Unit) {
     val context = LocalContext.current
     Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-
             Column(Modifier) {
                 Text(
                     stringResource(R.string.settings_audio_quality),
@@ -904,46 +998,12 @@ private fun QualityRow(value: AudioQuality, onChange: (AudioQuality) -> Unit) {
             }
         }
         Spacer(Modifier.height(14.dp))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .background(Color(0xFF080C14))
-                .border(1.dp, Color(0x1AFFFFFF), CircleShape)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            AudioQuality.entries.forEach { quality ->
-                val isSelected = quality == value
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(38.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) {
-                                Brush.verticalGradient(listOf(Color(0xFF2E84FE), Color(0xFF104EB6)))
-                            } else {
-                                Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-                            }
-                        )
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(1.dp, Color(0x66FFFFFF), CircleShape)
-                            } else Modifier
-                        )
-                        .clickable { onChange(quality) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        quality.label(context),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else CanopyColors.Muted,
-                    )
-                }
-            }
-        }
+        SegmentedControl(
+            items = AudioQuality.entries,
+            selectedItem = value,
+            onSelect = onChange,
+            label = { it.label(context) },
+        )
     }
 }
 
@@ -983,50 +1043,14 @@ private fun PlayerModeRow(value: MobilePlayerMode, onChange: (MobilePlayerMode) 
             }
         }
         Spacer(Modifier.height(14.dp))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .background(Color(0xFF080C14))
-                .border(1.dp, Color(0x1AFFFFFF), CircleShape)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            MobilePlayerMode.entries.forEach { mode ->
-                val isSelected = mode == value
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(38.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) {
-                                Brush.verticalGradient(listOf(Color(0xFF2E84FE), Color(0xFF104EB6)))
-                            } else {
-                                Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-                            }
-                        )
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(1.dp, Color(0x66FFFFFF), CircleShape)
-                            } else Modifier
-                        )
-                        .clickable {
-                            if (mode != value) {
-                                onChange(mode)
-                            }
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        mode.label(context),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else CanopyColors.Muted,
-                    )
-                }
-            }
-        }
+        SegmentedControl(
+            items = MobilePlayerMode.entries,
+            selectedItem = value,
+            onSelect = { mode ->
+                if (mode != value) onChange(mode)
+            },
+            label = { it.label(context) },
+        )
         Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier

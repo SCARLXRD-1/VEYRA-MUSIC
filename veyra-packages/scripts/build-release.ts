@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 SFG545
+ * Copyright (C) 2026 AKASHI DEV
  *
  * This file is part of Veyra Music.
  *

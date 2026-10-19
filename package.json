@@ -1,6 +1,6 @@
 {
   "name": "veyra",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Veyra Music - A Quasar, Vue, Socket.IO, Electron YouTube Music client by AKASHI DEV.",
   "homepage": "https://github.com/SCARLXRD-1/VEYRA-MUSIC",
   "repository": {
@@ -28,9 +28,11 @@
     "build:potoken-bundle": "node scripts/build-potoken-bundle.mjs",
     "build:native:media": "sh scripts/build-native-media.sh",
     "package:veyra": "bun run --cwd veyra-packages package:veyra",
+    "package:orchard": "bun run --cwd veyra-packages package:veyra",
     "package:veyra-packages:linux": "bun run --cwd veyra-packages package:linux",
     "package:veyra-packages:windows": "bun run --cwd veyra-packages package:windows",
-    "package:veyra-packages:arch": "bun run --cwd veyra-packages package:arch"
+    "package:veyra-packages:arch": "bun run --cwd veyra-packages package:arch",
+    "package:orchard-packages:arch": "bun run --cwd veyra-packages package:arch"
   },
   "keywords": [
     "quasar",

@@ -1,18 +1,20 @@
-## Veyra Mobile 2.0.0-beta.7 "Gliders Dungarees"
+## Veyra Music Mobile 1.0.3 "Enterprise Obsidian"
 
 ### Added
-- **Desktop Transition Parity**: Mobile now runs the shared desktop transition planner with the same cue selection, tempo ratios, choreography, and fallback policy, backed by generated parity fixtures.
-- **Cache Controls**: Added cache size reporting and a confirmation flow to clear temporary artwork, audio, network, and stream caches without touching downloads or library data.
-- **Artist Actions**: Added artist credits in playback and follow/unfollow controls from artist and track surfaces.
+- **Industrial Neumorphic Redesign in Settings**: Spotify Canvas, ListenBrainz, Qobuz, Last.fm, Discord, and Account actions redesigned as Obsidian Slate squircle cards with hairline borders, branded icon badges, and Electric Blue focused input fields.
+- **Tactile Micro-interactions & Animations**: Spring physics tactile compression, haptic feedback, active elevation glow on segmented selectors, and smooth spring forward chevrons.
+- **Universal Frosted Glass Effect**: Optimized neo-glassmorphic rendering across Settings, Devices, Library, and Search.
+- **TV Mode & Living Room Experience**: Refined D-Pad focus navigation and responsive layouts for big screens.
+- **More Stable Chromecast**: Preserves the Cast session through brief reconnects, prioritizes the local Wi-Fi network, and prevents long audio streams from timing out.
 
 ### Changed
-- **Listening Experience**: Refined Home, Library, detail, queue, now-playing, lyrics, device, integration, and settings screens with consistent responsive surfaces and bundled Inter typography.
-- **Beat Analysis**: Shipped the official `final0` Beat This dynamic INT8 model with fixed 1500-frame windows, CPU execution, versioned extraction, and bounded audio work.
-- **Crossfade Engine**: Shared transition planning now preserves selected cues, tempo ratios, choreography, and fallback behavior while rendered playback keeps its full-song source clock.
+- **Desktop & Mobile Aesthetic Parity**: Seamless alignment with the Enterprise Slate & Obsidian Industrial design system across dialogs, forms, and control panels.
+- **Optimized Gesture Feedback**: Silky smooth touch responsiveness with unified haptic timing and spring release.
+- **Typography & Layout Spacing**: Tuned Inter font scaling and squircle containers with pixel-perfect paddings.
 
 ### Fixed
-- **Rendered Crossfades**: Stabilized transition handoffs, preserved source position and duration, and prevented competing analysis and render jobs from disturbing playback timing.
+- **Persistent Playback Queue Metadata**: Completely eliminated "Artista desconocido" and empty titles when saving and restoring playback state.
 
 ### Maintenance
-- **Android Runtime**: Updated to stock ONNX Runtime Android 1.29.0, kept production APKs ARM64-only, and removed the experimental QNN/HTP packaging path after benchmark validation.
-- **Testing & Tooling**: Added transition parity, timeline, work-limiter, cache, and UI tests plus Beat This quantization and accuracy benchmarks.
+- **Testing & Stability**: Comprehensive unit test validation across playback controller, audio analysis, and update parsing suites.
+- **Bilingual Localization**: Complete Mexican Spanish (es-MX) and English (en-US) translation parity.

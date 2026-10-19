@@ -6,10 +6,10 @@
 
 ---
 
-## 📦 Versión Actual: `1.0.2` (APK universal)
+## 📦 Versión Actual: `1.0.3` (APK universal)
 
 - **Nombre de archivo:** `veyramusic.apk`
-- **Versión:** `1.0.2`
+- **Versión:** `1.0.3`
 - **Código de versión:** `3`
 - **Tamaño:** `162 MiB` (170,014,594 bytes)
 - **Min SDK:** Android 7 (API 24)
@@ -23,7 +23,7 @@
 
 ---
 
-## 🚀 Novedades de la Versión 1.0.2
+## 🚀 Novedades de la Versión 1.0.3
 
 1. **Efecto Cristal Esmerilado Universal:** Neo-glassmorphism reactivo en tiempo real con shaders de alto rendimiento.
 2. **Claridad de Cuenta Veyra (Cloud Sync):** Conmutador claro entre Iniciar sesión y Crear cuenta, con explicaciones claras de sincronización PC y opcionalidad.
@@ -34,7 +34,7 @@
 
 ## 📲 Instrucciones de Instalación (Side-loading)
 
-1. Descargue `veyramusic.apk` desde el enlace oficial de la versión 1.0.2 y transfiera el archivo al dispositivo.
+1. Descargue `veyramusic.apk` desde el enlace oficial de la versión 1.0.3 y transfiera el archivo al dispositivo.
 2. Abra el archivo desde el explorador de archivos y autorice la instalación de aplicaciones de orígenes desconocidos.
 3. También puede instalarlo directamente vía USB con Android Debug Bridge (ADB):
    ```bash

@@ -232,6 +232,8 @@ fun TabletPlayerBody(
                                 onMove = onMoveQueueItem,
                                 onClearUpcoming = onClearUpcoming,
                                 onShuffleUpcoming = onShuffle,
+                                onShuffle = onShuffle,
+                                onRepeat = onRepeat,
                                 autoplayEnabled = autoplayEnabled,
                                 autoplayLoading = autoplayLoading,
                                 autoplayError = autoplayError,

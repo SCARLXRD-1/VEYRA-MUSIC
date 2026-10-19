@@ -57,10 +57,10 @@
   const IS_WEB_HOSTED = window.location.protocol === 'http:' || window.location.protocol === 'https:';
 
   const DOWNLOAD_URLS = {
-    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk',
-    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk',
-    linux: IS_WEB_HOSTED ? '/download/linux' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyra-v1.0.2-linux-x64.tar.gz',
-    windows: IS_WEB_HOSTED ? '/download/windows' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyra-v1.0.2-windows-x64.zip'
+    mobile: IS_WEB_HOSTED ? '/download/android' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.3/veyramusic.apk',
+    tv: IS_WEB_HOSTED ? '/download/tv' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.3/veyramusic.apk',
+    linux: IS_WEB_HOSTED ? '/download/linux' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.3/veyra-v1.0.3-linux-x64.tar.gz',
+    windows: IS_WEB_HOSTED ? '/download/windows' : 'https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.3/veyra-v1.0.3-windows-x64.zip'
   };
 
   /* -------------------------------------------------------------------------
@@ -102,7 +102,7 @@
         arch: 'x64 Portable',
         btnLabel: 'Descargar Veyra Windows (405 MB)',
         url: DOWNLOAD_URLS.windows,
-        filename: 'veyra-v1.0.2-windows-x64.zip',
+        filename: 'veyra-v1.0.3-windows-x64.zip',
         meta: 'Formato: Portable Zip &bull; SMTC Media Ready &bull; 405 MB'
       };
     }
@@ -115,7 +115,7 @@
         arch: 'x86_64',
         btnLabel: 'Descargar Veyra Linux (393 MB)',
         url: DOWNLOAD_URLS.linux,
-        filename: 'veyra-v1.0.2-linux-x64.tar.gz',
+        filename: 'veyra-v1.0.3-linux-x64.tar.gz',
         meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 393 MB'
       };
     }
@@ -128,7 +128,7 @@
       arch: 'x86_64',
       btnLabel: 'Descargar Veyra Linux (378 MB)',
       url: DOWNLOAD_URLS.linux,
-      filename: 'veyra-v1.0.2-linux-x64.tar.gz',
+      filename: 'veyra-v1.0.3-linux-x64.tar.gz',
       meta: 'Formato: Standalone Tar.gz &bull; C++/Rust DSP Nativo &bull; 378 MB'
     };
   }

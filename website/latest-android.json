@@ -1,9 +1,9 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "codename": "AKASHI DEV",
-  "versionCode": 3,
-  "apkUrl": "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.2/veyramusic.apk",
+  "versionCode": 4,
+  "apkUrl": "https://github.com/SCARLXRD-1/VEYRA-MUSIC/releases/download/v1.0.3/veyramusic.apk",
   "sha256": "69129b4c295508b7869444365fe70f5f9c573e3a55db76a05725644524d91da5",
-  "publishedAt": "2026-10-18T23:12:00Z",
-  "releaseNotes": "Efecto cristal universal en toda la app, Chromecast con animación y logo Veyra, reproducción secuencial de descargas y opción de autodescarga al reproducir."
+  "publishedAt": "2026-10-19T20:00:00Z",
+  "releaseNotes": "Rediseño industrial Obsidian Slate en Ajustes, micro-interacciones táctiles elásticas, persistencia de cola, Chromecast de alta estabilidad y mejoras de rendimiento."
 }

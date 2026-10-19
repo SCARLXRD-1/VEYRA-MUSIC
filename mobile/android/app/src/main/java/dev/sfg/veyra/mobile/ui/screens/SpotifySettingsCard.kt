@@ -23,6 +23,7 @@
 
 package dev.sfg.veyra.mobile.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,14 +31,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Login
+import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
@@ -54,6 +62,9 @@ import dev.sfg.veyra.mobile.model.OrchardSettings
 import dev.sfg.veyra.mobile.spotify.SpotifyCanvasRepository
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+
+private val SpotifyGreen = Color(0xFF1DB954)
+private val CookieBlue = Color(0xFF38BDF8)
 
 @Composable
 fun SpotifySettingsCard(
@@ -77,23 +88,47 @@ fun SpotifySettingsCard(
                 checked = settings.spotifyCanvasEnabled,
                 onChecked = { onSettings(settings.copy(spotifyCanvasEnabled = it)) },
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             if (isConnected) {
-                IntegrationAction(stringResource(R.string.spot_sign_out), destructive = true) {
+                IntegrationAction(
+                    label = stringResource(R.string.spot_sign_out),
+                    icon = Icons.Rounded.Logout,
+                    destructive = true,
+                ) {
                     onSettings(settings.copy(spotifySpdc = ""))
                 }
             } else {
-                IntegrationAction(stringResource(R.string.spot_sign_in), onClick = onConnectSpotify)
-                IntegrationAction(stringResource(R.string.spot_use_session_cookie)) { showSpdcDialog = true }
+                IntegrationAction(
+                    label = stringResource(R.string.spot_sign_in),
+                    icon = Icons.Rounded.Login,
+                    accentColor = SpotifyGreen,
+                    onClick = onConnectSpotify,
+                )
+                Spacer(Modifier.height(4.dp))
+                IntegrationAction(
+                    label = stringResource(R.string.spot_use_session_cookie),
+                    icon = Icons.Rounded.Key,
+                    accentColor = CookieBlue,
+                    onClick = { showSpdcDialog = true },
+                )
             }
         }
     }
 
     if (showSpdcDialog) {
         var input by remember { mutableStateOf(settings.spotifySpdc) }
+        val dialogShape = RoundedCornerShape(24.dp)
         AlertDialog(
             onDismissRequest = { showSpdcDialog = false },
-            title = { Text(stringResource(R.string.spot_spdc_dialog_title), color = CanopyColors.Text) },
+            shape = dialogShape,
+            containerColor = Color(0xFF131B2B),
+            title = {
+                Text(
+                    stringResource(R.string.spot_spdc_dialog_title),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = CanopyColors.Text,
+                )
+            },
             text = {
                 Column {
                     Text(
@@ -101,31 +136,52 @@ fun SpotifySettingsCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = CanopyColors.Muted,
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it },
-                        placeholder = { Text(stringResource(R.string.spot_spdc_placeholder)) },
+                        placeholder = { Text(stringResource(R.string.spot_spdc_placeholder), color = CanopyColors.Muted) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFF0B0F19),
+                            unfocusedContainerColor = Color(0xFF0B0F19),
+                            focusedBorderColor = CookieBlue,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                            focusedTextColor = CanopyColors.Text,
+                            unfocusedTextColor = CanopyColors.Text,
+                            cursorColor = CookieBlue,
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    val extracted = SpotifyCanvasRepository.extractSpdc(input)
-                    onSettings(settings.copy(spotifySpdc = extracted))
-                    showSpdcDialog = false
-                }) {
-                    Text(stringResource(R.string.action_save), color = LocalAccent.current)
+                Button(
+                    onClick = {
+                        val extracted = SpotifyCanvasRepository.extractSpdc(input)
+                        onSettings(settings.copy(spotifySpdc = extracted))
+                        showSpdcDialog = false
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = CookieBlue),
+                ) {
+                    Text(
+                        stringResource(R.string.action_save),
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black,
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSpdcDialog = false }) {
+                OutlinedButton(
+                    onClick = { showSpdcDialog = false },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                ) {
                     Text(stringResource(R.string.action_cancel), color = CanopyColors.Muted)
                 }
             },
-            containerColor = CanopyColors.Surface,
         )
     }
 }
@@ -158,7 +214,7 @@ private fun SpotifyToggleRow(
             onCheckedChange = onChecked,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = LocalAccent.current,
+                checkedTrackColor = SpotifyGreen,
                 uncheckedThumbColor = CanopyColors.Muted,
                 uncheckedTrackColor = CanopyColors.Canvas,
             ),

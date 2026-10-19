@@ -29,6 +29,16 @@ import kotlin.math.abs
 
 /** Selects distinct songs from YouTube Music's radio response for the Autoplay queue. */
 object AutoplayRecommendations {
+    /** Picks downloads that are not already anywhere in the live queue. */
+    fun offlineCandidates(downloaded: List<Track>, queuedIds: Set<String>, limit: Int): List<Track> {
+        if (limit <= 0) return emptyList()
+        return downloaded.asSequence()
+            .filter { it.id.isNotBlank() && it.id !in queuedIds }
+            .distinctBy(Track::id)
+            .take(limit)
+            .toList()
+    }
+
     /**
      * Finds duplicate rows that Autoplay itself added. User-authored duplicate playlist rows are
      * intentionally retained, but an Autoplay row may not repeat either a chosen row or an earlier

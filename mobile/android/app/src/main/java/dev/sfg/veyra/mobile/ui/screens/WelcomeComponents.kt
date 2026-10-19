@@ -26,7 +26,6 @@ package dev.sfg.veyra.mobile.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,6 +45,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
 import dev.sfg.veyra.mobile.ui.theme.LocalAccent
+import dev.sfg.veyra.mobile.ui.tv.tvFocusable
 
 @Composable
 internal fun WelcomeSectionCard(
@@ -98,7 +100,11 @@ internal fun WelcomeToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onChecked(!checked) }
+            .tvFocusable(
+                shape = RoundedCornerShape(12.dp),
+                scale = 1.035f,
+                onClick = { onChecked(!checked) },
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -121,12 +127,16 @@ internal fun WelcomeToggleRow(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onChecked,
+            onCheckedChange = null,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.Black,
                 checkedTrackColor = LocalAccent.current,
                 uncheckedThumbColor = CanopyColors.Muted,
                 uncheckedTrackColor = CanopyColors.Canvas,
+                disabledCheckedThumbColor = Color.Black,
+                disabledCheckedTrackColor = LocalAccent.current,
+                disabledUncheckedThumbColor = CanopyColors.Muted,
+                disabledUncheckedTrackColor = CanopyColors.Canvas,
             ),
         )
     }
@@ -139,6 +149,7 @@ internal fun WelcomeOptionChip(
     icon: ImageVector,
     selected: Boolean,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
     onClick: () -> Unit,
 ) {
     val bg = if (selected) LocalAccent.current.copy(alpha = 0.20f) else Color.Transparent
@@ -146,10 +157,15 @@ internal fun WelcomeOptionChip(
 
     Column(
         modifier = modifier
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .clip(RoundedCornerShape(10.dp))
             .background(bg)
             .border(1.dp, border, RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
+            .tvFocusable(
+                shape = RoundedCornerShape(10.dp),
+                scale = 1.045f,
+                onClick = onClick,
+            )
             .padding(vertical = 10.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

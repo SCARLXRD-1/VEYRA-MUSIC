@@ -37,6 +37,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Animation
+import androidx.compose.material.icons.rounded.Login
+import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Icon
@@ -133,7 +135,12 @@ fun DiscordSettingsCard(
                     }
 
                     Spacer(Modifier.height(14.dp))
-                    IntegrationAction(stringResource(R.string.disc_sign_out), destructive = true, onClick = onDisconnect)
+                    IntegrationAction(
+                        label = stringResource(R.string.disc_sign_out),
+                        icon = Icons.Rounded.Logout,
+                        destructive = true,
+                        onClick = onDisconnect,
+                    )
 
                     Spacer(Modifier.height(16.dp))
                     Box(
@@ -201,7 +208,12 @@ fun DiscordSettingsCard(
                         )
                     }
                     Spacer(Modifier.height(14.dp))
-                    IntegrationAction(stringResource(R.string.disc_sign_in), onClick = onConnect)
+                    IntegrationAction(
+                        label = stringResource(R.string.disc_sign_in),
+                        icon = Icons.Rounded.Login,
+                        accentColor = Color(0xFF5865F2),
+                        onClick = onConnect,
+                    )
                 }
             }
         }

@@ -69,6 +69,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal data class DesktopTransferPlan(
     val tracks: List<Track>,
@@ -107,6 +108,11 @@ internal fun desktopTransferPlan(track: Track?, queue: List<Track>, repeatMode: 
 @OptIn(FlowPreview::class)
 class VeyraViewModel(application: Application) : AndroidViewModel(application) {
     private val graph = VeyraGraph.from(application)
+    val sessionQrPayload = graph.sessionQrPairing.qrPayload
+    val sessionQrStatus = graph.sessionQrPairing.status
+    fun startSessionQr() = graph.sessionQrPairing.startReceiver()
+    fun cancelSessionQr() = graph.sessionQrPairing.cancelReceiver()
+    fun importSessionQr(qr: String) = graph.sessionQrPairing.importFromQr(qr)
     private val songLinksCoordinator = SongLinksCoordinator(graph.songLinks, viewModelScope, application)
     val shareState: StateFlow<SongShareState?> = songLinksCoordinator.shareState
     private val local = LocalPlaybackController(application, viewModelScope)
@@ -331,6 +337,8 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Seed that already came back with nothing usable; retrying it would fail the same way. */
     private var autoplayExhaustedSeed = ""
+    private var autoplayRequestGeneration = 0L
+    private var autoplayLastOnline = isOnline.value
 
     /**
      * Whether refills are allowed, tracked separately from the persisted setting because DataStore
@@ -1108,8 +1116,13 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
     fun setAutoplayEnabled(enabled: Boolean) {
         autoplayGate.value = enabled
         graph.settings.updateSettings(settings.value.copy(autoplayEnabled = enabled))
-        if (enabled) return
+        if (enabled) {
+            autoplayExhaustedSeed = ""
+            mutableAutoplayError.value = ""
+            return
+        }
         // Turning it off should undo what it added, not leave the queue full of unasked-for music.
+        invalidateAutoplayRequest()
         mutableAutoplayError.value = ""
         autoplayExhaustedSeed = ""
         if (targets.value.selected !is PlaybackTarget.LocalPhone) return
@@ -1123,6 +1136,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
         val remaining: Int,
         val enabled: Boolean,
         val isLocal: Boolean,
+        val online: Boolean,
     )
 
     private fun observeAutoplay() {
@@ -1134,7 +1148,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
                 .collect { autoplayGate.value = it }
         }
         viewModelScope.launch {
-            combine(playback, autoplayGate, targets) { snapshot, enabled, target ->
+            combine(playback, autoplayGate, targets, graph.networkMonitor.isOnline) { snapshot, enabled, target, online ->
                 val upcoming = snapshot.upcoming
                 AutoplayTrigger(
                     // The tail of the queue is the seed: recommendations should follow the music the
@@ -1143,6 +1157,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
                     remaining = upcoming.size,
                     enabled = enabled,
                     isLocal = target.selected is PlaybackTarget.LocalPhone,
+                    online = online,
                 )
             }
                 // Playback ticks every second; without this the refill check would run with it.
@@ -1264,39 +1279,91 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refillAutoplay(trigger: AutoplayTrigger) {
-        if (!trigger.enabled || !trigger.isLocal) return
+        if (trigger.online != autoplayLastOnline) {
+            autoplayLastOnline = trigger.online
+            autoplayExhaustedSeed = ""
+            mutableAutoplayError.value = ""
+        }
+        if (!trigger.enabled || !trigger.isLocal) {
+            invalidateAutoplayRequest()
+            return
+        }
+        if (!trigger.online) invalidateAutoplayRequest()
+        if (autoplaySeedInFlight.isNotBlank() && autoplaySeedInFlight != trigger.seedId) {
+            invalidateAutoplayRequest()
+        }
         val currentContext = playback.value.contextTitle
         val downloadsTitle = getApplication<Application>().getString(R.string.library_filter_downloads)
-        if (currentContext == downloadsTitle || !isOnline.value) {
+        if (currentContext == downloadsTitle || !trigger.online) {
             if (trigger.remaining > AUTOPLAY_REFILL_THRESHOLD) return
             val completed = graph.downloads.downloads.value.values
                 .filter { it.status == dev.sfg.veyra.mobile.download.DownloadStatus.COMPLETED }
                 .map { it.track }
-            if (completed.isNotEmpty()) {
-                val currentQueueIds = playback.value.queue.map { it.id }.toSet()
-                val unplayed = completed.filter { it.id !in currentQueueIds }
-                val candidates = if (unplayed.isNotEmpty()) unplayed else completed.filter { it.id != trigger.seedId }
-                if (candidates.isNotEmpty()) {
-                    val nextTracks = candidates.shuffled().take(10).map { it.copy(autoplayGenerated = true) }
-                    local.appendUpcoming(nextTracks, 50)
-                }
+            val currentQueueIds = playback.value.queue.map { it.id }.toSet()
+            val candidates = AutoplayRecommendations.offlineCandidates(
+                downloaded = completed,
+                queuedIds = currentQueueIds,
+                limit = AUTOPLAY_QUEUE_LIMIT,
+            )
+            if (candidates.isNotEmpty()) {
+                val nextTracks = candidates.shuffled().map { it.copy(autoplayGenerated = true) }
+                local.appendUpcoming(nextTracks, AUTOPLAY_TOTAL_LIMIT)
+                mutableAutoplayError.value = ""
+            } else if (completed.isEmpty() && !trigger.online) {
+                mutableAutoplayError.value = getApplication<Application>().getString(R.string.msg_no_offline_autoplay_tracks)
             }
             return
         }
         if (trigger.remaining > AUTOPLAY_REFILL_THRESHOLD) return
-        if (trigger.seedId.isBlank() || !isOnline.value) return
+        if (trigger.seedId.isBlank()) return
         if (trigger.seedId == autoplaySeedInFlight || trigger.seedId == autoplayExhaustedSeed) return
 
+        val generation = ++autoplayRequestGeneration
         autoplaySeedInFlight = trigger.seedId
         mutableAutoplayLoading.value = true
         mutableAutoplayError.value = ""
         viewModelScope.launch {
-            runCatching { graph.catalog.upNext(trigger.seedId) }
-                .onSuccess { candidates -> appendAutoplayTracks(trigger.seedId, candidates) }
-                .onFailure { mutableAutoplayError.value = it.message ?: getApplication<Application>().getString(R.string.msg_autoplay_load_failed) }
-            mutableAutoplayLoading.value = false
-            autoplaySeedInFlight = ""
+            try {
+                val candidates = withTimeoutOrNull(AUTOPLAY_REQUEST_TIMEOUT_MS) {
+                    graph.catalog.upNext(trigger.seedId)
+                }
+                if (candidates == null) {
+                    if (isAutoplayRequestCurrent(generation, trigger.seedId)) {
+                        mutableAutoplayError.value = getApplication<Application>().getString(R.string.msg_autoplay_load_failed)
+                    }
+                } else if (isAutoplayRequestCurrent(generation, trigger.seedId)) {
+                    appendAutoplayTracks(trigger.seedId, candidates)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (isAutoplayRequestCurrent(generation, trigger.seedId)) {
+                    mutableAutoplayError.value = error.message
+                        ?: getApplication<Application>().getString(R.string.msg_autoplay_load_failed)
+                }
+            } finally {
+                if (generation == autoplayRequestGeneration) {
+                    mutableAutoplayLoading.value = false
+                    autoplaySeedInFlight = ""
+                }
+            }
         }
+    }
+
+    private fun invalidateAutoplayRequest() {
+        autoplayRequestGeneration++
+        autoplaySeedInFlight = ""
+        mutableAutoplayLoading.value = false
+    }
+
+    private fun isAutoplayRequestCurrent(generation: Long, seedId: String): Boolean {
+        if (generation != autoplayRequestGeneration || !autoplayGate.value || !isOnline.value ||
+            targets.value.selected !is PlaybackTarget.LocalPhone
+        ) return false
+        val snapshot = playback.value
+        val currentSeed = snapshot.upcoming.lastOrNull()?.id.orEmpty()
+            .ifBlank { snapshot.currentTrack?.id.orEmpty() }
+        return currentSeed == seedId
     }
 
     private fun appendAutoplayTracks(seedId: String, candidates: List<Track>) {
@@ -1741,6 +1808,7 @@ class VeyraViewModel(application: Application) : AndroidViewModel(application) {
         const val AUTOPLAY_REFILL_THRESHOLD = 3
         const val AUTOPLAY_QUEUE_LIMIT = 20
         const val AUTOPLAY_TOTAL_LIMIT = 100
+        const val AUTOPLAY_REQUEST_TIMEOUT_MS = 12_000L
         const val BEST_MIX_DOWNLOAD_TIMEOUT_MS = 90_000L
     }
 }

@@ -641,6 +641,7 @@
     <string name="msg_music_video_local_only">Los videos musicales solo se reproducen en este dispositivo</string>
     <string name="msg_network_error">Error de red</string>
     <string name="msg_no_more_recommendations">No hay más recomendaciones</string>
+    <string name="msg_no_offline_autoplay_tracks">No hay canciones descargadas para continuar sin conexión</string>
     <string name="msg_no_music_matched">Ninguna canción coincide con %1$s</string>
     <string name="msg_no_music_video">No hay video musical disponible</string>
     <string name="msg_no_playable_tracks">No hay canciones reproducibles</string>

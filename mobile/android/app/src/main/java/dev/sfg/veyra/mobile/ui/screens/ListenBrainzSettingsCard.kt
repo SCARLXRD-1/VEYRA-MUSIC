@@ -23,6 +23,7 @@
 
 package dev.sfg.veyra.mobile.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,12 +36,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,7 +65,6 @@ import androidx.compose.ui.unit.sp
 import dev.sfg.veyra.connect.R
 import dev.sfg.veyra.mobile.listenbrainz.ListenBrainzState
 import dev.sfg.veyra.mobile.ui.theme.CanopyColors
-import dev.sfg.veyra.mobile.ui.theme.LocalAccent
 
 private val ListenBrainzOrange = Color(0xFFEB743B)
 
@@ -104,12 +111,24 @@ fun ListenBrainzSettingsCard(
             when (state) {
                 ListenBrainzState.SignedOut,
                 is ListenBrainzState.Error ->
-                    IntegrationAction(stringResource(R.string.lbz_connect), onClick = { showTokenDialog = true })
+                    IntegrationAction(
+                        label = stringResource(R.string.lbz_connect),
+                        icon = Icons.Rounded.Link,
+                        accentColor = ListenBrainzOrange,
+                        onClick = { showTokenDialog = true },
+                    )
                 ListenBrainzState.Validating ->
-                    IntegrationAction(stringResource(R.string.lbz_validating), onClick = {})
+                    IntegrationAction(
+                        label = stringResource(R.string.lbz_validating),
+                        icon = Icons.Rounded.Sync,
+                        accentColor = ListenBrainzOrange,
+                        enabled = false,
+                        onClick = {},
+                    )
                 is ListenBrainzState.Connected ->
                     IntegrationAction(
-                        stringResource(R.string.lbz_sign_out),
+                        label = stringResource(R.string.lbz_sign_out),
+                        icon = Icons.Rounded.Logout,
                         destructive = true,
                         onClick = onDisconnect,
                     )
@@ -119,9 +138,18 @@ fun ListenBrainzSettingsCard(
 
     if (showTokenDialog) {
         var token by remember { mutableStateOf("") }
+        val dialogShape = RoundedCornerShape(24.dp)
         AlertDialog(
             onDismissRequest = { showTokenDialog = false },
-            title = { Text(stringResource(R.string.lbz_token_dialog_title), color = CanopyColors.Text) },
+            shape = dialogShape,
+            containerColor = Color(0xFF131B2B),
+            title = {
+                Text(
+                    stringResource(R.string.lbz_token_dialog_title),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = CanopyColors.Text,
+                )
+            },
             text = {
                 Column {
                     Text(
@@ -129,33 +157,55 @@ fun ListenBrainzSettingsCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = CanopyColors.Muted,
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = token,
                         onValueChange = { token = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color(0xFF0B0F19),
+                            unfocusedContainerColor = Color(0xFF0B0F19),
+                            focusedBorderColor = ListenBrainzOrange,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                            focusedTextColor = CanopyColors.Text,
+                            unfocusedTextColor = CanopyColors.Text,
+                            cursorColor = ListenBrainzOrange,
+                        ),
                         visualTransformation = PasswordVisualTransformation(),
                     )
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     enabled = token.isNotBlank(),
                     onClick = {
                         onConnect(token)
                         showTokenDialog = false
                     },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ListenBrainzOrange,
+                        disabledContainerColor = ListenBrainzOrange.copy(alpha = 0.35f),
+                    ),
                 ) {
-                    Text(stringResource(R.string.lbz_connect_confirm), color = LocalAccent.current)
+                    Text(
+                        stringResource(R.string.lbz_connect_confirm),
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showTokenDialog = false }) {
+                OutlinedButton(
+                    onClick = { showTokenDialog = false },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                ) {
                     Text(stringResource(R.string.action_cancel), color = CanopyColors.Muted)
                 }
             },
-            containerColor = CanopyColors.Surface,
         )
     }
 }
